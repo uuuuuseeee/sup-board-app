@@ -1,7 +1,6 @@
 {% extends 'base.html' %}
 
 {% block title %}ボード一覧{% endblock %}
-
 {% block header %}SUPボード管理アプリ{% endblock %}
 
 {% block content %}
@@ -39,9 +38,9 @@
                         <a href="/?sort_by=name&order=asc">▲</a>
                         <a href="/?sort_by=name&order=desc">▼</a>
                     </th>
+                    <!-- シリアル番号の列を削除 -->
                     <th scope="col">現在の場所</th>
                     <th scope="col">最終更新者</th>
-                    <th scope="col">備考</th>
                     <th scope="col">最終更新日時</th>
                     <th scope="col">操作</th>
                 </tr>
@@ -50,10 +49,15 @@
                 {% for board in boards %}
                 <tr>
                     <td><input type="checkbox" name="board_ids" value="{{ board.id }}"></td>
-                    <td>{{ board.name }}</td>
+                    <td>
+                        <!-- ↓↓ ボード名をクリックするとモーダルが開くように変更 ↓↓ -->
+                        <button type="button" class="btn btn-link p-0" data-bs-toggle="modal" data-bs-target="#boardDetailModal{{ board.id }}">
+                            {{ board.name }}
+                        </button>
+                    </td>
+                    <!-- シリアル番号のセルを削除 -->
                     <td>{{ board.location }}</td>
                     <td>{{ board.user }}</td>
-                    <td>{{ board.notes or '' }}</td>
                     <td>{{ board.updated_at }}</td>
                     <td>
                         <a href="{{ url_for('update_board', board_id=board.id) }}" class="btn btn-secondary btn-sm">更新</a>
@@ -94,6 +98,35 @@
     </div>
 </form>
 
+<!-- ↓↓ ここから各ボードの詳細情報モーダルを追加 ↓↓ -->
+{% for board in boards %}
+<div class="modal fade" id="boardDetailModal{{ board.id }}" tabindex="-1" aria-labelledby="boardDetailModalLabel{{ board.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="boardDetailModalLabel{{ board.id }}">ボード詳細: {{ board.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>シリアル番号:</strong> {{ board.serial_number or '登録なし' }}</li>
+                    <li class="list-group-item"><strong>現在の場所:</strong> {{ board.location }}</li>
+                    <li class="list-group-item"><strong>最終更新者:</strong> {{ board.user }}</li>
+                    <li class="list-group-item"><strong>最終更新日時:</strong> {{ board.updated_at }}</li>
+                    <li class="list-group-item"><strong>備考:</strong><br>{{ board.notes or 'なし' }}</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <a href="{{ url_for('update_board', board_id=board.id) }}" class="btn btn-primary">このボードを編集</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+<!-- モーダルの追加はここまで -->
+
+
 <script>
     function toggle(source) {
         checkboxes = document.getElementsByName('board_ids');
@@ -112,3 +145,4 @@
     }
 </script>
 {% endblock %}
+

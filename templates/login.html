@@ -1,0 +1,30 @@
+    {% extends 'base.html' %}
+
+    {% block title %}ログイン{% endblock %}
+    {% block header %}ログイン{% endblock %}
+
+    {% block content %}
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" action="/login">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">ユーザー名</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">パスワード</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">ログイン</button>
+                    </form>
+                </div>
+                <div class="card-footer text-center">
+                    アカウントをお持ちでないですか？ <a href="{{ url_for('register') }}">新規登録</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+    

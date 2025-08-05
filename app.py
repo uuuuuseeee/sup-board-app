@@ -75,59 +75,18 @@ def login():
         flash('ユーザー名またはパスワードが正しくありません。', 'error')
     return render_template('login.html')
 @app.route('/register', methods=['GET', 'POST'])
+@app.route('/register', methods=['GET', 'POST'])
 def register():
-    # --- ここからデバッグ用のprint文 ---
-    print("--- [1] /register ルートにアクセスがありました ---")
-    
-    if current_user.is_authenticated:
-        print("[!] 既にログイン済みのため、トップページに移動します。")
-        return redirect(url_for('index'))
-
+    print("--- [テスト] /register にアクセスがありました ---")
     if request.method == 'POST':
-        print("--- [2] POSTリクエスト（登録ボタンが押された）を検知しました ---")
-        try:
-            username = request.form.get('username')
-            password = request.form.get('password')
-            print(f"--- [3] フォームからデータを受け取りました: ユーザー名='{username}'")
-
-            if not username or not password:
-                print("[!] ユーザー名またはパスワードが空です。")
-                flash('ユーザー名とパスワードの両方を入力してください。', 'error')
-                return redirect(url_for('register'))
-
-            print("--- [4] データベースでユーザー名の重複をチェックします ---")
-            existing_user = User.query.filter_by(username=username).first()
-            
-            if existing_user:
-                print(f"[!] ユーザー名 '{username}' は既に存在します。")
-                flash('そのユーザー名は既に使用されています。', 'error')
-                return redirect(url_for('register'))
-
-            print("--- [5] 新しいユーザーを作成します ---")
-            new_user = User(username=username)
-            new_user.set_password(password)
-            
-            print("--- [6] データベースセッションにユーザーを追加します ---")
-            db.session.add(new_user)
-            
-            print("--- [7] データベースにコミット（保存）します ---  <-- 最もエラーが起きやすい場所")
-            db.session.commit()
-            print("--- [8] ★★★ データベースへの保存に成功しました！ ★★★ ---")
-            
-            flash('ユーザー登録が完了しました。ログインしてください。', 'success')
-            return redirect(url_for('login'))
-
-        except Exception as e:
-            # 何かエラーが起きたら、ログに詳細を記録する
-            print(f"--- [X] 予期せぬエラーが発生しました: {e}")
-            db.session.rollback() # エラーが起きたので変更を元に戻す
-            flash('登録中にエラーが発生しました。管理者にご確認ください。', 'error')
-            return redirect(url_for('register'))
-
-    print("--- [G] GETリクエストなので、登録ページを表示します ---")
+        print("--- [テスト] ★★★ POSTリクエストの受信に成功しました！ ★★★ ---")
+        username = request.form.get('username', '（データなし）')
+        print(f"--- [テスト] 送信されたユーザー名: {username} ---")
+        flash('テストPOSTリクエストを受け取りました。ログを確認してください。')
+        return redirect(url_for('register'))
+    
+    print("--- [テスト] GETリクエストなので、テスト用の登録ページを表示します。")
     return render_template('register.html')
-
-
 @app.route('/logout')
 @login_required
 def logout():
@@ -269,4 +228,5 @@ def history(board_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 

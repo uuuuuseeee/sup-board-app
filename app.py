@@ -47,7 +47,6 @@ class UpdateHistory(db.Model):
 class Board(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
-    # --- ↓↓ シリアル番号の列を追加 ↓↓ ---
     serial_number = db.Column(db.String(100), unique=True, nullable=True)
     location = db.Column(db.String(100), nullable=False)
     user = db.Column(db.String(50), nullable=False)
@@ -129,7 +128,8 @@ def index():
 def add_board():
     if request.method == 'POST':
         name = request.form.get('name')
-        serial_number = request.form.get('serial_number')
+        # 空文字列の場合はNoneに変換する
+        serial_number = request.form.get('serial_number') or None
         notes = request.form.get('notes')
         location_select = request.form.get('location_select')
         user = current_user.username
@@ -137,10 +137,10 @@ def add_board():
             flash('必須項目が入力されていません。', 'error')
             return redirect(url_for('add_board'))
         
-        # ボード名とシリアル番号の重複チェック
         if Board.query.filter_by(name=name).first():
             flash(f'ボード名「{name}」は既に使用されています。', 'error')
             return redirect(url_for('add_board'))
+        # serial_numberがNoneでない場合のみ重複チェック
         if serial_number and Board.query.filter_by(serial_number=serial_number).first():
             flash(f'シリアル番号「{serial_number}」は既に使用されています。', 'error')
             return redirect(url_for('add_board'))
@@ -162,7 +162,8 @@ def update_board(board_id):
         previous_location = board_to_update.location
         previous_user = board_to_update.user
         new_name = request.form.get('name')
-        new_serial_number = request.form.get('serial_number')
+        # 空文字列の場合はNoneに変換する
+        new_serial_number = request.form.get('serial_number') or None
         notes = request.form.get('notes')
         location_select = request.form.get('location_select')
         new_user = current_user.username
@@ -170,10 +171,10 @@ def update_board(board_id):
             flash('必須項目が入力されていません。', 'error')
             return redirect(url_for('update_board', board_id=board_id))
         
-        # ボード名とシリアル番号の重複チェック（自分自身は除く）
         if Board.query.filter(Board.name == new_name, Board.id != board_id).first():
             flash(f'ボード名「{new_name}」は既に使用されています。', 'error')
             return redirect(url_for('update_board', board_id=board_id))
+        # new_serial_numberがNoneでない場合のみ重複チェック
         if new_serial_number and Board.query.filter(Board.serial_number == new_serial_number, Board.id != board_id).first():
             flash(f'シリアル番号「{new_serial_number}」は既に使用されています。', 'error')
             return redirect(url_for('update_board', board_id=board_id))
@@ -244,4 +245,8 @@ def history(board_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
 

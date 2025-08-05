@@ -42,9 +42,9 @@ class Board(db.Model):
 with app.app_context():
     db.create_all()
 
-# --- ルート定義 ---
 @app.route('/')
 def index():
+    # ...（ソートの処理は変更なし）...
     sort_by = request.args.get('sort_by', 'id')
     order = request.args.get('order', 'asc')
     query = Board.query
@@ -53,9 +53,18 @@ def index():
     else:
         query = query.order_by(Board.id.asc())
     all_boards = query.all()
-    return render_template('index.html', boards=all_boards)
 
-@app.route('/add', methods=['GET', 'POST'])
+    # --- ここから場所ごとの本数集計処理 ---
+    location_counts = {}
+    for board in all_boards:
+        # 辞書に場所がなければキーを追加、あればカウントを1増やす
+        location_counts[board.location] = location_counts.get(board.location, 0) + 1
+    # --- 集計処理はここまで ---
+    
+    # render_templateに集計結果を追加で渡す
+    return render_template('index.html', boards=all_boards, location_counts=location_counts)
+
+
 @app.route('/add', methods=['GET', 'POST'])
 def add_board():
     if request.method == 'POST':
@@ -185,5 +194,6 @@ def history(board_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 

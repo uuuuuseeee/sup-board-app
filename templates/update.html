@@ -25,11 +25,11 @@
             具体的な場所: <input type="text" name="location_other" value="{% if board.location not in standard_locations %}{{ board.location }}{% endif %}">
         </p>
 
-        <p id="updater_p">
+        <p>
             更新者: <input type="text" name="updater" value="{{ board.user }}">
         </p>
 
-        <p id="owner_p" style="display: none;">
+        <p style="display: none;">
             持ち主: <input type="text" name="owner" value="{{ board.user }}">
         </p>
 
@@ -46,22 +46,20 @@
         function toggleLocationInput() {
             const select = document.getElementById('location_select');
             const otherLocationP = document.getElementById('location_other_p');
-            const updaterP = document.getElementById('updater_p');
-            const ownerP = document.getElementById('owner_p');
+            const updaterInput = document.querySelector('input[name="updater"]');
+            const ownerInput = document.querySelector('input[name="owner"]');
             const isOther = select.value === 'その他';
 
             otherLocationP.style.display = isOther ? 'block' : 'none';
-            ownerP.style.display = isOther ? 'block' : 'none';
-            updaterP.style.display = isOther ? 'none' : 'block';
+            ownerInput.parentElement.style.display = isOther ? 'block' : 'none';
+            updaterInput.parentElement.style.display = isOther ? 'none' : 'block';
 
-            // 必須(required)属性の切り替え
-            if (isOther) {
-                updaterP.querySelector('input').removeAttribute('required');
-                ownerP.querySelector('input').setAttribute('required', 'required');
-            } else {
-                ownerP.querySelector('input').removeAttribute('required');
-                updaterP.querySelector('input').setAttribute('required', 'required');
-            }
+            // 入力欄の有効/無効と必須属性を切り替える
+            ownerInput.disabled = !isOther;
+            ownerInput.required = isOther;
+
+            updaterInput.disabled = isOther;
+            updaterInput.required = !isOther;
         }
         // ページが読み込まれた時に、現在のデータに合わせてフォームの状態を正しく設定する
         document.addEventListener('DOMContentLoaded', toggleLocationInput);

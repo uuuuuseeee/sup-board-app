@@ -1,34 +1,31 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>登録機能テスト</title>
-</head>
-<body>
-    <h1>登録機能テスト</h1>
-    <p>このページは、フォーム送信機能のデバッグ用です。</p>
+{% extends 'base.html' %}
 
-    <!-- Flashメッセージ表示エリア -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <hr>
-        <p>サーバーからのメッセージ:</p>
-        <ul style="color: green; font-weight: bold;">
-        {% for category, message in messages %}
-          <li>{{ message }}</li>
-        {% endfor %}
-        </ul>
-        <hr>
-      {% endif %}
-    {% endwith %}
+{% block title %}新規登録{% endblock %}
+{% block header %}新規登録{% endblock %}
 
-    <form method="POST" action="/register">
-        <label for="username">ユーザー名:</label><br>
-        <input type="text" id="username" name="username"><br><br>
-        <label for="password">パスワード:</label><br>
-        <input type="password" id="password" name="password"><br><br>
-        <button type="submit">テストボタン</button>
-    </form>
-    
-</body>
-</html>
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('register') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">ユーザー名</label>
+                        {# required属性を削除 #}
+                        <input type="text" class="form-control" id="username" name="username">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">パスワード</label>
+                        {# required属性を削除 #}
+                        <input type="password" class="form-control" id="password" name="password">
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">登録する</button>
+                </form>
+            </div>
+            <div class="card-footer text-center">
+                既にアカウントをお持ちですか？ <a href="{{ url_for('login') }}">ログイン</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

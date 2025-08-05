@@ -172,12 +172,18 @@ def bulk_update():
         flash(f'{updated_count}件のボード情報を一括更新しました。', 'success')
     return redirect(url_for('index'))
 
+
 @app.route('/history/<int:board_id>')
 def history(board_id):
+    # 対象のボード情報を取得
     board = Board.query.get_or_404(board_id)
+    # そのボードに関連する履歴を、新しいものから順に全て取得
     histories = UpdateHistory.query.filter_by(board_id=board.id).order_by(UpdateHistory.id.desc()).all()
+
+    # history.htmlをレンダリングし、ボード情報と履歴情報を渡す
     return render_template('history.html', board=board, histories=histories)
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 

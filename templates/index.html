@@ -48,7 +48,24 @@
     </table>
 
     <hr>
-    
+
+    <div class="card mb-4">
+        <div class="card-header">
+            各拠点のボード本数
+        </div>
+        <div class="card-body">
+            <ul class="list-group list-group-flush">
+                {% for location, count in location_counts.items() %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ location }}
+                        <span class="badge bg-primary rounded-pill">{{ count }}</span>
+                    </li>
+                {% else %}
+                    <li class="list-group-item">まだボードがありません。</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
     <div class="card p-3">
         <h3>選択したボードを一括更新</h3>
         <div class="row g-3">
@@ -95,4 +112,5 @@
         }
     }
 </script>
+
 {% endblock %}

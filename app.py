@@ -8,19 +8,27 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 
 # --- Configuration ---
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_very_secret_key_that_should_be_changed')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_default_secret_key_for_development')
+
+# Renderの環境変数からDATABASE_URLを取得
 database_url = os.environ.get('DATABASE_URL')
-if database_url:
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url.replace("postgres://", "postgresql://", 1)
+if database_url and database_url.startswith("postgres://"):
+    # 本番環境(Render)の場合、URLをSQLAlchemy用に修正
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
+    # ローカル開発環境の場合、SQLiteを使用
     basedir = os.path.abspath(os.path.dirname(__file__))
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'boards.db')
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login' # 未ログイン時にリダイレクトされるページ
+login_manager.login_view = 'login'
+login_manager.login_message = "このページにアクセスするにはログインが必要です。"
+login_manager.login_message_category = "error"
 
 # --- Models ---
 class User(UserMixin, db.Model):
@@ -61,6 +69,7 @@ with app.app_context():
     db.create_all()
 
 # --- Routes ---
+# ログイン、新規登録、ログアウトのルート
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -70,33 +79,47 @@ def login():
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
-            login_user(user)
-            return redirect(url_for('index'))
+            login_user(user, remember=True)
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('index'))
         flash('ユーザー名またはパスワードが正しくありません。', 'error')
     return render_template('login.html')
-@app.route('/register', methods=['GET', 'POST'])
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    print("--- [テスト] /register にアクセスがありました ---")
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
     if request.method == 'POST':
-        print("--- [テスト] ★★★ POSTリクエストの受信に成功しました！ ★★★ ---")
-        username = request.form.get('username', '（データなし）')
-        print(f"--- [テスト] 送信されたユーザー名: {username} ---")
-        flash('テストPOSTリクエストを受け取りました。ログを確認してください。')
-        return redirect(url_for('register'))
-    
-    print("--- [テスト] GETリクエストなので、テスト用の登録ページを表示します。")
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if not username or not password:
+            flash('ユーザー名とパスワードの両方を入力してください。', 'error')
+            return redirect(url_for('register'))
+        if User.query.filter_by(username=username).first():
+            flash('そのユーザー名は既に使用されています。', 'error')
+            return redirect(url_for('register'))
+        new_user = User(username=username)
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.commit()
+        flash('ユーザー登録が完了しました。ログインしてください。', 'success')
+        return redirect(url_for('login'))
     return render_template('register.html')
+
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('login'))
 
+# メインのアプリケーションのルート
+# (index, add, update, delete, bulk_update, historyの各関数は、以前の完成版と同じなので省略)
+# ... 以前の完成版の、index()からhistory()までの全ての関数をここに貼り付けてください ...
+
+# --- ここに、以前の完成版のindex()からhistory()までの全関数をペーストしてください ---
 @app.route('/')
 @login_required
 def index():
-    # ... (この関数の内容は変更なし) ...
     sort_by = request.args.get('sort_by', 'id')
     order = request.args.get('order', 'asc')
     query = Board.query
@@ -117,15 +140,10 @@ def add_board():
         name = request.form.get('name')
         notes = request.form.get('notes')
         location_select = request.form.get('location_select')
-        
-        # ログインユーザーを自動で設定
-        user = current_user.username 
-
+        user = current_user.username
         if not all([name, location_select]):
             flash('必須項目が入力されていません。', 'error')
             return redirect(url_for('add_board'))
-
-        # ... (重複チェックなどは変更なし) ...
         existing_board = Board.query.filter_by(name=name).first()
         if existing_board:
             flash(f'ボード名「{name}」は既に使用されています。', 'error')
@@ -149,15 +167,10 @@ def update_board(board_id):
         new_name = request.form.get('name')
         notes = request.form.get('notes')
         location_select = request.form.get('location_select')
-
-        # ログインユーザーを自動で設定
         new_user = current_user.username
-
         if not all([new_name, location_select]):
             flash('必須項目が入力されていません。', 'error')
             return redirect(url_for('update_board', board_id=board_id))
-        
-        # ... (重複チェックなどは変更なし) ...
         existing_board = Board.query.filter(Board.name == new_name, Board.id != board_id).first()
         if existing_board:
             flash(f'ボード名「{new_name}」は既に使用されています。', 'error')
@@ -176,6 +189,15 @@ def update_board(board_id):
         return redirect(url_for('index'))
     return render_template('update.html', board=board_to_update)
 
+@app.route('/delete/<int:board_id>', methods=['POST'])
+@login_required
+def delete_board(board_id):
+    board_to_delete = Board.query.get_or_404(board_id)
+    db.session.delete(board_to_delete)
+    db.session.commit()
+    flash(f'ボード「{board_to_delete.name}」を削除しました。', 'success')
+    return redirect(url_for('index'))
+
 @app.route('/bulk_update', methods=['POST'])
 @login_required
 def bulk_update():
@@ -183,12 +205,8 @@ def bulk_update():
     if not board_ids:
         flash('更新するボードが選択されていません。', 'error')
         return redirect(url_for('index'))
-    
-    # ログインユーザーを自動で設定
     updater = current_user.username
     location_select = request.form.get('location_select')
-    
-    # ... (以降の処理は変更なし) ...
     new_location = request.form.get('location_other') if location_select == 'その他' else location_select
     updated_count = 0
     for board_id in board_ids:
@@ -208,16 +226,6 @@ def bulk_update():
         flash(f'{updated_count}件のボード情報を一括更新しました。', 'success')
     return redirect(url_for('index'))
 
-# ... (delete, historyルートは変更なし、ただし@login_requiredを追加) ...
-@app.route('/delete/<int:board_id>', methods=['POST'])
-@login_required
-def delete_board(board_id):
-    board_to_delete = Board.query.get_or_404(board_id)
-    db.session.delete(board_to_delete)
-    db.session.commit()
-    flash(f'ボード「{board_to_delete.name}」を削除しました。', 'success')
-    return redirect(url_for('index'))
-
 @app.route('/history/<int:board_id>')
 @login_required
 def history(board_id):
@@ -228,5 +236,3 @@ def history(board_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-

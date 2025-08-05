@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>新しいボードの追加</title>
+</head>
+<body>
+    <h1>新しいボードを追加</h1>
+    <form action="/add" method="POST">
+        <p>
+            ボード名: <input type="text" name="name" required>
+        </p>
+        <p>
+            場所: <input type="text" name="location" required>
+        </p>
+        <p>
+            使用者/更新者: <input type="text" name="user" required>
+        </p>
+        <button type="submit">追加する</button>
+    </form>
+    <br>
+    <a href="/">一覧に戻る</a>
+</body>
+</html>

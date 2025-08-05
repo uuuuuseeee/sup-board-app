@@ -1,26 +1,25 @@
 import os
-import datetime
+# datetimeから、datetime, timezone, timedeltaをインポート
+from datetime import datetime, timezone, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# JSTタイムゾーンの定義 (UTC+9)
+JST = timezone(timedelta(hours=+9), 'JST')
+
 app = Flask(__name__)
 
 # --- Configuration ---
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_default_secret_key_for_development')
-
-# Renderの環境変数からDATABASE_URLを取得
 database_url = os.environ.get('DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
-    # 本番環境(Render)の場合、URLをSQLAlchemy用に修正
     database_url = database_url.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    # ローカル開発環境の場合、SQLiteを使用
     basedir = os.path.abspath(os.path.dirname(__file__))
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'boards.db')
-
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -30,17 +29,13 @@ login_manager.login_view = 'login'
 login_manager.login_message = "このページにアクセスするにはログインが必要です。"
 login_manager.login_message_category = "error"
 
-# --- Models ---
+# --- Models (変更なし) ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+    def set_password(self, password): self.password_hash = generate_password_hash(password)
+    def check_password(self, password): return check_password_hash(self.password_hash, password)
 
 class UpdateHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -59,21 +54,20 @@ class Board(db.Model):
     notes = db.Column(db.Text, nullable=True)
     histories = db.relationship('UpdateHistory', backref='board', lazy=True, cascade="all, delete-orphan")
 
-# --- Flask-Login Helper ---
+# --- Flask-Login Helper (変更なし) ---
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- Database Initialization ---
+# --- Database Initialization (変更なし) ---
 with app.app_context():
     db.create_all()
 
 # --- Routes ---
-# ログイン、新規登録、ログアウトのルート
+# login, register, logout, index (変更なし)
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
+    if current_user.is_authenticated: return redirect(url_for('index'))
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -87,8 +81,7 @@ def login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
+    if current_user.is_authenticated: return redirect(url_for('index'))
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -112,11 +105,6 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# メインのアプリケーションのルート
-# (index, add, update, delete, bulk_update, historyの各関数は、以前の完成版と同じなので省略)
-# ... 以前の完成版の、index()からhistory()までの全ての関数をここに貼り付けてください ...
-
-# --- ここに、以前の完成版のindex()からhistory()までの全関数をペーストしてください ---
 @app.route('/')
 @login_required
 def index():
@@ -133,10 +121,12 @@ def index():
         location_counts[board.location] = location_counts.get(board.location, 0) + 1
     return render_template('index.html', boards=all_boards, location_counts=location_counts)
 
+# --- ここから時刻取得部分を修正 ---
 @app.route('/add', methods=['GET', 'POST'])
 @login_required
 def add_board():
     if request.method == 'POST':
+        # ... (フォームデータ取得、チェック処理は変更なし) ...
         name = request.form.get('name')
         notes = request.form.get('notes')
         location_select = request.form.get('location_select')
@@ -149,7 +139,10 @@ def add_board():
             flash(f'ボード名「{name}」は既に使用されています。', 'error')
             return redirect(url_for('add_board'))
         location = request.form.get('location_other') if location_select == 'その他' else location_select
-        updated_at = datetime.datetime.now().strftime('%Y/%m/%d %H:%M')
+        
+        # JSTで現在時刻を取得
+        updated_at = datetime.now(JST).strftime('%Y/%m/%d %H:%M')
+        
         new_board = Board(name=name, location=location, user=user, notes=notes, updated_at=updated_at)
         db.session.add(new_board)
         db.session.commit()
@@ -162,6 +155,7 @@ def add_board():
 def update_board(board_id):
     board_to_update = Board.query.get_or_404(board_id)
     if request.method == 'POST':
+        # ... (フォームデータ取得、チェック処理は変更なし) ...
         previous_location = board_to_update.location
         previous_user = board_to_update.user
         new_name = request.form.get('name')
@@ -176,31 +170,28 @@ def update_board(board_id):
             flash(f'ボード名「{new_name}」は既に使用されています。', 'error')
             return redirect(url_for('update_board', board_id=board_id))
         new_location = request.form.get('location_other') if location_select == 'その他' else location_select
+        
+        current_time_jst = datetime.now(JST).strftime('%Y/%m/%d %H:%M')
+        
         if previous_location != new_location or previous_user != new_user:
-            history_entry = UpdateHistory(board_id=board_id, previous_location=previous_location, new_location=new_location, updated_by=new_user, updated_at=datetime.datetime.now().strftime('%Y/%m/%d %H:%M'))
+            history_entry = UpdateHistory(board_id=board_id, previous_location=previous_location, new_location=new_location, updated_by=new_user, updated_at=current_time_jst)
             db.session.add(history_entry)
+
         board_to_update.name = new_name
         board_to_update.notes = notes
         board_to_update.location = new_location
         board_to_update.user = new_user
-        board_to_update.updated_at = datetime.datetime.now().strftime('%Y/%m/%d %H:%M')
+        board_to_update.updated_at = current_time_jst
+        
         db.session.commit()
         flash(f'ボード「{board_to_update.name}」が正常に更新されました。', 'success')
         return redirect(url_for('index'))
     return render_template('update.html', board=board_to_update)
 
-@app.route('/delete/<int:board_id>', methods=['POST'])
-@login_required
-def delete_board(board_id):
-    board_to_delete = Board.query.get_or_404(board_id)
-    db.session.delete(board_to_delete)
-    db.session.commit()
-    flash(f'ボード「{board_to_delete.name}」を削除しました。', 'success')
-    return redirect(url_for('index'))
-
 @app.route('/bulk_update', methods=['POST'])
 @login_required
 def bulk_update():
+    # ... (フォームデータ取得、チェック処理は変更なし) ...
     board_ids = request.form.getlist('board_ids')
     if not board_ids:
         flash('更新するボードが選択されていません。', 'error')
@@ -208,22 +199,37 @@ def bulk_update():
     updater = current_user.username
     location_select = request.form.get('location_select')
     new_location = request.form.get('location_other') if location_select == 'その他' else location_select
+    
+    current_time_jst = datetime.now(JST).strftime('%Y/%m/%d %H:%M')
     updated_count = 0
+    
     for board_id in board_ids:
         board = Board.query.get(board_id)
         if board:
             previous_location = board.location
             previous_user = board.user
             if previous_location != new_location or previous_user != updater:
-                history_entry = UpdateHistory(board_id=board.id, previous_location=previous_location, new_location=new_location, updated_by=updater, updated_at=datetime.datetime.now().strftime('%Y/%m/%d %H:%M'))
+                history_entry = UpdateHistory(board_id=board.id, previous_location=previous_location, new_location=new_location, updated_by=updater, updated_at=current_time_jst)
                 db.session.add(history_entry)
+            
             board.location = new_location
             board.user = updater
-            board.updated_at = datetime.datetime.now().strftime('%Y/%m/%d %H:%M')
+            board.updated_at = current_time_jst
             updated_count += 1
+    
     if updated_count > 0:
         db.session.commit()
         flash(f'{updated_count}件のボード情報を一括更新しました。', 'success')
+    return redirect(url_for('index'))
+
+# delete, history (変更なし)
+@app.route('/delete/<int:board_id>', methods=['POST'])
+@login_required
+def delete_board(board_id):
+    board_to_delete = Board.query.get_or_404(board_id)
+    db.session.delete(board_to_delete)
+    db.session.commit()
+    flash(f'ボード「{board_to_delete.name}」を削除しました。', 'success')
     return redirect(url_for('index'))
 
 @app.route('/history/<int:board_id>')

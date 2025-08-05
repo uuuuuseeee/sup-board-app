@@ -56,58 +56,81 @@ def index():
     return render_template('index.html', boards=all_boards)
 
 @app.route('/add', methods=['GET', 'POST'])
+@app.route('/add', methods=['GET', 'POST'])
 def add_board():
     if request.method == 'POST':
-        name = request.form['name']
-        notes = request.form['notes']
-        location_select = request.form['location_select']
+        name = request.form.get('name')
+        notes = request.form.get('notes')
+        location_select = request.form.get('location_select')
+
+        # フォームから送られてきたキーでユーザーを決定
+        user = request.form.get('owner') or request.form.get('updater')
+
+        # 必須項目のチェック
+        if not all([name, location_select, user]):
+            flash('必須項目が入力されていません。', 'error')
+            return redirect(url_for('add_board'))
+
+        # 重複チェック
         existing_board = Board.query.filter_by(name=name).first()
         if existing_board:
             flash(f'ボード名「{name}」は既に使用されています。', 'error')
             return redirect(url_for('add_board'))
-        if location_select == 'その他':
-            location = request.form.get('location_other', 'その他')
-            user = request.form['owner']
-        else:
-            location = location_select
-            user = request.form['updater']
+
+        # 場所を決定
+        location = request.form.get('location_other') if location_select == 'その他' else location_select
+
         updated_at = datetime.datetime.now().strftime('%Y/%m/%d %H:%M')
         new_board = Board(name=name, location=location, user=user, notes=notes, updated_at=updated_at)
+
         db.session.add(new_board)
         db.session.commit()
+
         flash(f'ボード「{name}」が正常に追加されました。', 'success')
         return redirect(url_for('index'))
     return render_template('add.html')
-
+@app.route('/update/<int:board_id>', methods=['GET', 'POST'])
 @app.route('/update/<int:board_id>', methods=['GET', 'POST'])
 def update_board(board_id):
     board_to_update = Board.query.get_or_404(board_id)
-    previous_location = board_to_update.location
     if request.method == 'POST':
-        new_name = request.form['name']
-        notes = request.form['notes']
-        location_select = request.form['location_select']
+        previous_location = board_to_update.location # 変更前の場所を保存
+
+        new_name = request.form.get('name')
+        notes = request.form.get('notes')
+        location_select = request.form.get('location_select')
+        new_user = request.form.get('owner') or request.form.get('updater')
+
+        if not all([new_name, location_select, new_user]):
+            flash('必須項目が入力されていません。', 'error')
+            return redirect(url_for('update_board', board_id=board_id))
+
+        # ... (以降の処理は、前回の完成版コードから流用して貼り付けます) ...
+        # ボード名の重複チェック（自分自身以外のボードでチェック）
         existing_board = Board.query.filter(Board.name == new_name, Board.id != board_id).first()
         if existing_board:
             flash(f'ボード名「{new_name}」は既に使用されています。', 'error')
             return redirect(url_for('update_board', board_id=board_id))
-        if location_select == 'その他':
-            new_location = request.form.get('location_other', 'その他')
-            new_user = request.form['owner']
-        else:
-            new_location = location_select
-            new_user = request.form['updater']
+
+        # 変更後の場所を決定
+        new_location = request.form.get('location_other') if location_select == 'その他' else location_select
+
+        # 履歴記録処理
         if previous_location != new_location or board_to_update.user != new_user:
             history_entry = UpdateHistory(board_id=board_id, previous_location=previous_location, new_location=new_location, updated_by=new_user, updated_at=datetime.datetime.now().strftime('%Y/%m/%d %H:%M'))
             db.session.add(history_entry)
+
+        # ボード情報を更新
         board_to_update.name = new_name
         board_to_update.notes = notes
         board_to_update.location = new_location
         board_to_update.user = new_user
         board_to_update.updated_at = datetime.datetime.now().strftime('%Y/%m/%d %H:%M')
+
         db.session.commit()
         flash(f'ボード「{board_to_update.name}」が正常に更新されました。', 'success')
         return redirect(url_for('index'))
+
     return render_template('update.html', board=board_to_update)
 
 @app.route('/delete/<int:board_id>', methods=['POST'])
@@ -157,3 +180,4 @@ def history(board_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+

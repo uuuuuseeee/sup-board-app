@@ -153,7 +153,7 @@ def load_user(user_id):
 with app.app_context():
     db.create_all()
 
-# --- CLI Command for Admin Promotion ---
+# --- CLI Command (for local development) ---
 @app.cli.command("promote-admin")
 @click.argument("username")
 def promote_admin_command(username):

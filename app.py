@@ -1,5 +1,4 @@
 import os
-# datetimeから、datetime, timezone, timedeltaをインポート
 from datetime import datetime, timezone, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -12,14 +11,17 @@ JST = timezone(timedelta(hours=+9), 'JST')
 app = Flask(__name__)
 
 # --- Configuration ---
-# Renderの環境変数からSECRET_KEYを取得。なければ開発用のキーを使用。
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_default_secret_key_for_development')
 
 # Renderの環境変数からDATABASE_URLを取得
 database_url = os.environ.get('DATABASE_URL')
-if database_url and database_url.startswith("postgres://"):
-    # 本番環境(Render)の場合、URLをSQLAlchemyが認識できる形式に修正
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+# --- ↓↓ ここを、より確実な方法に修正しました ↓↓ ---
+# DATABASE_URLが設定されているか（本番環境かどうか）で分岐
+if database_url:
+    # SQLAlchemyが'postgresql://'を要求するため、古い形式('postgres://')のURLを置換
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
     # ローカル開発環境の場合、SQLiteをフォールバックとして使用
@@ -40,12 +42,8 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+    def set_password(self, password): self.password_hash = generate_password_hash(password)
+    def check_password(self, password): return check_password_hash(self.password_hash, password)
 
 class UpdateHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -77,8 +75,7 @@ with app.app_context():
 # --- Routes ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
+    if current_user.is_authenticated: return redirect(url_for('index'))
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -92,8 +89,7 @@ def login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
+    if current_user.is_authenticated: return redirect(url_for('index'))
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -197,21 +193,13 @@ def update_board(board_id):
         return redirect(url_for('index'))
     return render_template('update.html', board=board_to_update)
 
-# --- ↓↓ delete_board関数を修正 ↓↓ ---
 @app.route('/delete/<int:board_id>', methods=['POST'])
 @login_required
 def delete_board(board_id):
     board_to_delete = Board.query.get_or_404(board_id)
-
-    # 先に、関連する全ての履歴(子)を削除する
     UpdateHistory.query.filter_by(board_id=board_id).delete()
-
-    # 次に、ボード本体(親)を削除する
     db.session.delete(board_to_delete)
-
-    # データベースの変更を保存する
     db.session.commit()
-    
     flash(f'ボード「{board_to_delete.name}」を削除しました。', 'success')
     return redirect(url_for('index'))
 
@@ -251,6 +239,6 @@ def history(board_id):
     histories = UpdateHistory.query.filter_by(board_id=board.id).order_by(UpdateHistory.id.desc()).all()
     return render_template('history.html', board=board, histories=histories)
 
-
 if __name__ == '__main__':
     app.run(debug=True)
+

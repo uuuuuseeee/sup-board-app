@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+import jinja2 # nl2brフィルターのためにインポート
 
 # JSTタイムゾーンの定義 (UTC+9)
 JST = timezone(timedelta(hours=+9), 'JST')
@@ -31,13 +32,17 @@ login_manager.login_view = 'login'
 login_manager.login_message = "このページにアクセスするにはログインが必要です。"
 login_manager.login_message_category = "error"
 
+# --- Custom Jinja Filter ---
+@app.template_filter('nl2br')
+def nl2br(s):
+    return jinja2.Markup(s.replace('\n', '<br>\n'))
+
 # --- Models ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='member') # 'admin', 'member', 'guest'
-
+    role = db.Column(db.String(20), nullable=False, default='member')
     def set_password(self, password): self.password_hash = generate_password_hash(password)
     def check_password(self, password): return check_password_hash(self.password_hash, password)
 
@@ -59,7 +64,16 @@ class Board(db.Model):
     notes = db.Column(db.Text, nullable=True)
     histories = db.relationship('UpdateHistory', backref='board', lazy=True, cascade="all, delete-orphan")
 
-# --- Decorators ---
+# --- ↓↓ 新しいお知らせモデルを追加 ↓↓ ---
+class Announcement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(JST))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    author = db.relationship('User', backref=db.backref('announcements', lazy=True))
+
+# --- Decorators (変更なし) ---
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -78,16 +92,17 @@ def member_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- Flask-Login Helper ---
+# --- Flask-Login Helper (変更なし) ---
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- Database Initialization ---
+# --- Database Initialization (変更なし) ---
 with app.app_context():
     db.create_all()
 
 # --- Routes ---
+# login, guest_login, register, logout (変更なし)
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated: return redirect(url_for('index'))
@@ -142,6 +157,7 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+# --- ↓↓ index関数を修正 ↓↓ ---
 @app.route('/')
 @login_required
 def index():
@@ -156,8 +172,13 @@ def index():
     location_counts = {}
     for board in all_boards:
         location_counts[board.location] = location_counts.get(board.location, 0) + 1
-    return render_template('index.html', boards=all_boards, location_counts=location_counts)
+    
+    # 最新のお知らせを3件取得
+    announcements = Announcement.query.order_by(Announcement.timestamp.desc()).limit(3).all()
+    
+    return render_template('index.html', boards=all_boards, location_counts=location_counts, announcements=announcements)
 
+# ... (add, update, delete, bulk_update, historyの各関数は変更なし) ...
 @app.route('/add', methods=['GET', 'POST'])
 @login_required
 @member_required
@@ -279,6 +300,7 @@ def admin_panel():
     users = User.query.all()
     return render_template('admin.html', users=users)
 
+# ... (promote, demote, delete_userの各関数は変更なし) ...
 @app.route('/admin/promote/<int:user_id>', methods=['POST'])
 @login_required
 @admin_required
@@ -315,6 +337,43 @@ def delete_user(user_id):
     flash(f"ユーザー '{user_to_delete.username}' を削除しました。", 'success')
     return redirect(url_for('admin_panel'))
 
+# --- ↓↓ 新しいお知らせ管理ルートを追加 ↓↓ ---
+@app.route('/admin/announcements')
+@login_required
+@admin_required
+def admin_announcements():
+    all_announcements = Announcement.query.order_by(Announcement.timestamp.desc()).all()
+    return render_template('admin_announcements.html', announcements=all_announcements)
+
+@app.route('/admin/announcements/new', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def new_announcement():
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        if not title or not content:
+            flash('タイトルと内容の両方を入力してください。', 'error')
+            return redirect(url_for('new_announcement'))
+        
+        announcement = Announcement(title=title, content=content, author=current_user)
+        db.session.add(announcement)
+        db.session.commit()
+        flash('新しいお知らせを投稿しました。', 'success')
+        return redirect(url_for('admin_announcements'))
+    return render_template('new_announcement.html')
+
+@app.route('/admin/announcements/delete/<int:announcement_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_announcement(announcement_id):
+    announcement_to_delete = Announcement.query.get_or_404(announcement_id)
+    db.session.delete(announcement_to_delete)
+    db.session.commit()
+    flash('お知らせを削除しました。', 'success')
+    return redirect(url_for('admin_announcements'))
+
+# init-admin (変更なし)
 @app.route('/init-admin')
 def init_admin():
     if User.query.count() == 1:

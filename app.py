@@ -5,7 +5,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-# clickはもう不要なので削除してもOK
 
 # JSTタイムゾーンの定義 (UTC+9)
 JST = timezone(timedelta(hours=+9), 'JST')
@@ -37,10 +36,13 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    is_admin = db.Column(db.Boolean, nullable=False, default=False)
+    # --- is_adminをroleに変更 ---
+    role = db.Column(db.String(20), nullable=False, default='member') # 'admin', 'member', 'guest'
+
     def set_password(self, password): self.password_hash = generate_password_hash(password)
     def check_password(self, password): return check_password_hash(self.password_hash, password)
 
+# ... (UpdateHistory, Boardモデルは変更なし) ...
 class UpdateHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     board_id = db.Column(db.Integer, db.ForeignKey('board.id'), nullable=False)
@@ -63,8 +65,17 @@ class Board(db.Model):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_admin:
+        if current_user.role != 'admin':
             flash('このページにアクセスするには管理者権限が必要です。', 'error')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def member_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.role == 'guest':
+            flash('ゲストユーザーはこの操作を実行できません。', 'error')
             return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
@@ -78,8 +89,7 @@ def load_user(user_id):
 with app.app_context():
     db.create_all()
 
-# --- Routes (login, register, logout, index, etc. は変更なし) ---
-# ... (以前の完成版の、login()からhistory()までの全関数をここに貼り付けてください) ...
+# --- Routes ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated: return redirect(url_for('index'))
@@ -94,6 +104,20 @@ def login():
         flash('ユーザー名またはパスワードが正しくありません。', 'error')
     return render_template('login.html')
 
+# --- ↓↓ ゲストログイン用の新しいルート ↓↓ ---
+@app.route('/guest-login')
+def guest_login():
+    guest_user = User.query.filter_by(role='guest').first()
+    if not guest_user:
+        # ゲストユーザーが存在しない場合、初回のみ作成
+        guest_user = User(username='guest', role='guest')
+        # ゲストのパスワードは誰も知らないランダムなものに設定
+        guest_user.set_password(os.urandom(16).hex())
+        db.session.add(guest_user)
+        db.session.commit()
+    login_user(guest_user)
+    return redirect(url_for('index'))
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated: return redirect(url_for('index'))
@@ -106,7 +130,11 @@ def register():
         if User.query.filter_by(username=username).first():
             flash('そのユーザー名は既に使用されています。', 'error')
             return redirect(url_for('register'))
-        new_user = User(username=username)
+        # ゲストという名前では登録できないようにする
+        if username.lower() == 'guest':
+            flash('\'guest\' というユーザー名は使用できません。', 'error')
+            return redirect(url_for('register'))
+        new_user = User(username=username, role='member') # デフォルトはmember
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
@@ -138,8 +166,10 @@ def index():
 
 @app.route('/add', methods=['GET', 'POST'])
 @login_required
+@member_required # ゲストはアクセス不可
 def add_board():
     if request.method == 'POST':
+        # ... (処理内容は変更なし) ...
         name = request.form.get('name')
         serial_number = request.form.get('serial_number') or None
         notes = request.form.get('notes')
@@ -165,7 +195,9 @@ def add_board():
 
 @app.route('/update/<int:board_id>', methods=['GET', 'POST'])
 @login_required
+@member_required # ゲストはアクセス不可
 def update_board(board_id):
+    # ... (処理内容は変更なし) ...
     board_to_update = Board.query.get_or_404(board_id)
     if request.method == 'POST':
         previous_location = board_to_update.location
@@ -202,7 +234,9 @@ def update_board(board_id):
 
 @app.route('/delete/<int:board_id>', methods=['POST'])
 @login_required
+@member_required # ゲストはアクセス不可
 def delete_board(board_id):
+    # ... (処理内容は変更なし) ...
     board_to_delete = Board.query.get_or_404(board_id)
     db.session.delete(board_to_delete)
     db.session.commit()
@@ -211,7 +245,9 @@ def delete_board(board_id):
 
 @app.route('/bulk_update', methods=['POST'])
 @login_required
+@member_required # ゲストはアクセス不可
 def bulk_update():
+    # ... (処理内容は変更なし) ...
     board_ids = request.form.getlist('board_ids')
     if not board_ids:
         flash('更新するボードが選択されていません。', 'error')
@@ -241,10 +277,10 @@ def bulk_update():
 @app.route('/history/<int:board_id>')
 @login_required
 def history(board_id):
+    # ... (処理内容は変更なし) ...
     board = Board.query.get_or_404(board_id)
     histories = UpdateHistory.query.filter_by(board_id=board.id).order_by(UpdateHistory.id.desc()).all()
     return render_template('history.html', board=board, histories=histories)
-
 
 # --- Admin Routes ---
 @app.route('/admin')
@@ -259,7 +295,7 @@ def admin_panel():
 @admin_required
 def promote_user(user_id):
     user_to_promote = User.query.get_or_404(user_id)
-    user_to_promote.is_admin = True
+    user_to_promote.role = 'admin'
     db.session.commit()
     flash(f"ユーザー '{user_to_promote.username}' は管理者に昇格しました。", 'success')
     return redirect(url_for('admin_panel'))
@@ -272,7 +308,7 @@ def demote_user(user_id):
         flash('自分自身を降格させることはできません。', 'error')
         return redirect(url_for('admin_panel'))
     user_to_demote = User.query.get_or_404(user_id)
-    user_to_demote.is_admin = False
+    user_to_demote.role = 'member'
     db.session.commit()
     flash(f"ユーザー '{user_to_demote.username}' は一般ユーザーに降格しました。", 'success')
     return redirect(url_for('admin_panel'))
@@ -290,15 +326,12 @@ def delete_user(user_id):
     flash(f"ユーザー '{user_to_delete.username}' を削除しました。", 'success')
     return redirect(url_for('admin_panel'))
 
-# --- ↓↓ One-time Admin Setup Route ↓↓ ---
 @app.route('/init-admin')
 def init_admin():
-    # データベースにユーザーが1人だけいるか確認
     if User.query.count() == 1:
-        # 最初のユーザーを取得
         first_user = User.query.first()
-        if not first_user.is_admin:
-            first_user.is_admin = True
+        if first_user.role != 'admin':
+            first_user.role = 'admin'
             db.session.commit()
             flash(f"最初のユーザー '{first_user.username}' が管理者に任命されました。", "success")
         else:
@@ -307,8 +340,5 @@ def init_admin():
         flash("この操作は、ユーザーが1人だけ登録されている初期状態でのみ実行できます。", "error")
     return redirect(url_for('index'))
 
-
 if __name__ == '__main__':
     app.run(debug=True)
-
-

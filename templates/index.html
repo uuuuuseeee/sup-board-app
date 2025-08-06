@@ -27,53 +27,54 @@
     </div>
 </div>
 
-<form action="{{ url_for('bulk_update') }}" method="POST">
-    <div class="table-responsive">
-        <table class="table table-striped table-hover">
-            <thead class="table-light">
-                <tr>
-                    <th scope="col"><input type="checkbox" onclick="toggle(this);"></th>
-                    <th scope="col">
-                        ボード名
-                        <a href="/?sort_by=name&order=asc">▲</a>
-                        <a href="/?sort_by=name&order=desc">▼</a>
-                    </th>
-                    <!-- シリアル番号の列を削除 -->
-                    <th scope="col">現在の場所</th>
-                    <th scope="col">最終更新者</th>
-                    <th scope="col">最終更新日時</th>
-                    <th scope="col">操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for board in boards %}
-                <tr>
-                    <td><input type="checkbox" name="board_ids" value="{{ board.id }}"></td>
-                    <td>
-                        <!-- ↓↓ ボード名をクリックするとモーダルが開くように変更 ↓↓ -->
-                        <button type="button" class="btn btn-link p-0" data-bs-toggle="modal" data-bs-target="#boardDetailModal{{ board.id }}">
-                            {{ board.name }}
-                        </button>
-                    </td>
-                    <!-- シリアル番号のセルを削除 -->
-                    <td>{{ board.location }}</td>
-                    <td>{{ board.user }}</td>
-                    <td>{{ board.updated_at }}</td>
-                    <td>
-                        <a href="{{ url_for('update_board', board_id=board.id) }}" class="btn btn-secondary btn-sm">更新</a>
-                        <a href="{{ url_for('history', board_id=board.id) }}" class="btn btn-info btn-sm">履歴</a>
-                        <form action="{{ url_for('delete_board', board_id=board.id) }}" method="POST" style="display:inline;">
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('本当にこのボードを削除しますか？');">削除</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+<!-- ↓↓ ここからテーブル。フォームの外に出しました ↓↓ -->
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-light">
+            <tr>
+                <th scope="col"><input type="checkbox" onclick="toggle(this);"></th>
+                <th scope="col">
+                    ボード名
+                    <a href="/?sort_by=name&order=asc">▲</a>
+                    <a href="/?sort_by=name&order=desc">▼</a>
+                </th>
+                <th scope="col">現在の場所</th>
+                <th scope="col">最終更新者</th>
+                <th scope="col">最終更新日時</th>
+                <th scope="col">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for board in boards %}
+            <tr>
+                <!-- ↓↓ ここのチェックボックスに form="bulk-update-form" を追加 ↓↓ -->
+                <td><input type="checkbox" name="board_ids" value="{{ board.id }}" form="bulk-update-form"></td>
+                <td>
+                    <button type="button" class="btn btn-link p-0" data-bs-toggle="modal" data-bs-target="#boardDetailModal{{ board.id }}">
+                        {{ board.name }}
+                    </button>
+                </td>
+                <td>{{ board.location }}</td>
+                <td>{{ board.user }}</td>
+                <td>{{ board.updated_at }}</td>
+                <td>
+                    <a href="{{ url_for('update_board', board_id=board.id) }}" class="btn btn-secondary btn-sm">更新</a>
+                    <a href="{{ url_for('history', board_id=board.id) }}" class="btn btn-info btn-sm">履歴</a>
+                    <!-- ↓↓ この削除フォームは、どのフォームの内側にもないので正しく動作します ↓↓ -->
+                    <form action="{{ url_for('delete_board', board_id=board.id) }}" method="POST" style="display:inline;">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('本当にこのボードを削除しますか？');">削除</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
-    <hr>
-    
+<hr>
+
+<!-- ↓↓ ここから一括更新フォーム。id="bulk-update-form" を追加 ↓↓ -->
+<form action="{{ url_for('bulk_update') }}" method="POST" id="bulk-update-form">
     <div class="card p-3">
         <h3>選択したボードを一括更新</h3>
         <div class="row g-3 align-items-end">
@@ -98,7 +99,7 @@
     </div>
 </form>
 
-<!-- ↓↓ ここから各ボードの詳細情報モーダルを追加 ↓↓ -->
+<!-- モーダルとJavaScriptは変更なし -->
 {% for board in boards %}
 <div class="modal fade" id="boardDetailModal{{ board.id }}" tabindex="-1" aria-labelledby="boardDetailModalLabel{{ board.id }}" aria-hidden="true">
     <div class="modal-dialog">
@@ -124,8 +125,6 @@
     </div>
 </div>
 {% endfor %}
-<!-- モーダルの追加はここまで -->
-
 
 <script>
     function toggle(source) {
@@ -145,4 +144,3 @@
     }
 </script>
 {% endblock %}
-

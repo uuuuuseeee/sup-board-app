@@ -208,26 +208,25 @@ def guest_login():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated: return redirect(url_for('dashboard'))
-    teams = Team.query.order_by(Team.name).all()
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        generation = request.form.get('generation')
-        team_id = request.form.get('team_id')
-        if not all([username, password, generation, team_id]):
-            flash('すべての項目を入力してください。', 'error')
+        # チームと期の入力を不要にし、チェックも簡略化
+        if not all([username, password]):
+            flash('ユーザー名とパスワードの両方を入力してください。', 'error')
             return redirect(url_for('register'))
         if User.query.filter_by(username=username).first():
             flash('そのユーザー名は既に使用されています。', 'error')
             return redirect(url_for('register'))
-        new_user = User(username=username, generation=generation, team_id=team_id, role='member')
+        # role='member'で、チームと期は空のままユーザーを作成
+        new_user = User(username=username, role='member')
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
-        flash('ユーザー登録が完了しました。ログインしてください。', 'success')
+        flash('ユーザー登録が完了しました。ログインしてプロフィールを設定してください。', 'success')
         return redirect(url_for('login'))
-    return render_template('auth/register.html', teams=teams)
-
+    # GETリクエスト時にはteamsを渡す必要がなくなった
+    return render_template('auth/register.html')
 @app.route('/logout')
 @login_required
 def logout():
@@ -694,3 +693,4 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+

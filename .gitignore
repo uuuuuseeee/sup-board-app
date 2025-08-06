@@ -1,7 +1,0 @@
-# Python
-venv/
-__pycache__/
-*.pyc
-
-# Database
-boards.db

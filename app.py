@@ -692,5 +692,20 @@ def delete_announcement(announcement_id):
     flash('お知らせを削除しました。', 'success')
     return redirect(url_for('admin_announcements'))
 
+@app.route('/init-admin')
+def init_admin():
+    if User.query.count() == 1:
+        first_user = User.query.first()
+        if first_user.role != 'admin':
+            first_user.role = 'admin'
+            db.session.commit()
+            flash(f"最初のユーザー '{first_user.username}' が管理者に任命されました。", "success")
+        else:
+            flash("最初のユーザーは既に管理者です。", "info")
+    else:
+        flash("この操作は、ユーザーが1人だけ登録されている初期状態でのみ実行できます。", "error")
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
     app.run(debug=True)
+

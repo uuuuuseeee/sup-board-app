@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-import click
+# clickはもう不要なので削除してもOK
 
 # JSTタイムゾーンの定義 (UTC+9)
 JST = timezone(timedelta(hours=+9), 'JST')
@@ -37,13 +37,10 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    # --- ↓↓ 管理者フラグを追加 ↓↓ ---
     is_admin = db.Column(db.Boolean, nullable=False, default=False)
-
     def set_password(self, password): self.password_hash = generate_password_hash(password)
     def check_password(self, password): return check_password_hash(self.password_hash, password)
 
-# ... (UpdateHistory, Boardモデルは変更なし) ...
 class UpdateHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     board_id = db.Column(db.Integer, db.ForeignKey('board.id'), nullable=False)
@@ -61,7 +58,6 @@ class Board(db.Model):
     updated_at = db.Column(db.String(50), nullable=False)
     notes = db.Column(db.Text, nullable=True)
     histories = db.relationship('UpdateHistory', backref='board', lazy=True, cascade="all, delete-orphan")
-
 
 # --- Decorators ---
 def admin_required(f):
@@ -82,22 +78,8 @@ def load_user(user_id):
 with app.app_context():
     db.create_all()
 
-# --- CLI Commands ---
-@app.cli.command("promote-admin")
-@click.argument("username")
-def promote_admin_command(username):
-    """指定されたユーザーを管理者に昇格させます。"""
-    user = User.query.filter_by(username=username).first()
-    if user:
-        user.is_admin = True
-        db.session.commit()
-        print(f"ユーザー '{username}' は管理者に昇格しました。")
-    else:
-        print(f"ユーザー '{username}' が見つかりません。")
-
-# --- Routes ---
-# ... (login, register, logout, index, add, update, delete, bulk_update, historyの各関数は変更なし) ...
-# ただし、すべての@login_requiredの下に@admin_requiredを追加する必要がある操作もあるが、今回はユーザー管理のみに限定
+# --- Routes (login, register, logout, index, etc. は変更なし) ---
+# ... (以前の完成版の、login()からhistory()までの全関数をここに貼り付けてください) ...
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated: return redirect(url_for('index'))
@@ -264,7 +246,7 @@ def history(board_id):
     return render_template('history.html', board=board, histories=histories)
 
 
-# --- ↓↓ Admin Routes ↓↓ ---
+# --- Admin Routes ---
 @app.route('/admin')
 @login_required
 @admin_required
@@ -286,7 +268,6 @@ def promote_user(user_id):
 @login_required
 @admin_required
 def demote_user(user_id):
-    # 自分自身を降格させないための安全装置
     if current_user.id == user_id:
         flash('自分自身を降格させることはできません。', 'error')
         return redirect(url_for('admin_panel'))
@@ -300,7 +281,6 @@ def demote_user(user_id):
 @login_required
 @admin_required
 def delete_user(user_id):
-    # 自分自身を削除させないための安全装置
     if current_user.id == user_id:
         flash('自分自身を削除することはできません。', 'error')
         return redirect(url_for('admin_panel'))
@@ -310,6 +290,25 @@ def delete_user(user_id):
     flash(f"ユーザー '{user_to_delete.username}' を削除しました。", 'success')
     return redirect(url_for('admin_panel'))
 
+# --- ↓↓ One-time Admin Setup Route ↓↓ ---
+@app.route('/init-admin')
+def init_admin():
+    # データベースにユーザーが1人だけいるか確認
+    if User.query.count() == 1:
+        # 最初のユーザーを取得
+        first_user = User.query.first()
+        if not first_user.is_admin:
+            first_user.is_admin = True
+            db.session.commit()
+            flash(f"最初のユーザー '{first_user.username}' が管理者に任命されました。", "success")
+        else:
+            flash("最初のユーザーは既に管理者です。", "info")
+    else:
+        flash("この操作は、ユーザーが1人だけ登録されている初期状態でのみ実行できます。", "error")
+    return redirect(url_for('index'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+

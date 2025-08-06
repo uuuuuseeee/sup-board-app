@@ -64,7 +64,6 @@ class Board(db.Model):
     notes = db.Column(db.Text, nullable=True)
     histories = db.relationship('UpdateHistory', backref='board', lazy=True, cascade="all, delete-orphan")
 
-# --- ↓↓ 新しいお知らせモデルを追加 ↓↓ ---
 class Announcement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
@@ -73,7 +72,7 @@ class Announcement(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     author = db.relationship('User', backref=db.backref('announcements', lazy=True))
 
-# --- Decorators (変更なし) ---
+# --- Decorators ---
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -92,17 +91,16 @@ def member_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- Flask-Login Helper (変更なし) ---
+# --- Flask-Login Helper ---
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- Database Initialization (変更なし) ---
+# --- Database Initialization ---
 with app.app_context():
     db.create_all()
 
 # --- Routes ---
-# login, guest_login, register, logout (変更なし)
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated: return redirect(url_for('index'))
@@ -157,7 +155,6 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- ↓↓ index関数を修正 ↓↓ ---
 @app.route('/')
 @login_required
 def index():
@@ -172,13 +169,9 @@ def index():
     location_counts = {}
     for board in all_boards:
         location_counts[board.location] = location_counts.get(board.location, 0) + 1
-    
-    # 最新のお知らせを3件取得
     announcements = Announcement.query.order_by(Announcement.timestamp.desc()).limit(3).all()
-    
     return render_template('index.html', boards=all_boards, location_counts=location_counts, announcements=announcements)
 
-# ... (add, update, delete, bulk_update, historyの各関数は変更なし) ...
 @app.route('/add', methods=['GET', 'POST'])
 @login_required
 @member_required
@@ -300,7 +293,6 @@ def admin_panel():
     users = User.query.all()
     return render_template('admin.html', users=users)
 
-# ... (promote, demote, delete_userの各関数は変更なし) ...
 @app.route('/admin/promote/<int:user_id>', methods=['POST'])
 @login_required
 @admin_required
@@ -337,7 +329,6 @@ def delete_user(user_id):
     flash(f"ユーザー '{user_to_delete.username}' を削除しました。", 'success')
     return redirect(url_for('admin_panel'))
 
-# --- ↓↓ 新しいお知らせ管理ルートを追加 ↓↓ ---
 @app.route('/admin/announcements')
 @login_required
 @admin_required
@@ -356,7 +347,9 @@ def new_announcement():
             flash('タイトルと内容の両方を入力してください。', 'error')
             return redirect(url_for('new_announcement'))
         
-        announcement = Announcement(title=title, content=content, author=current_user)
+        # --- ↓↓ ここを修正しました ↓↓ ---
+        announcement = Announcement(title=title, content=content, user_id=current_user.id)
+        
         db.session.add(announcement)
         db.session.commit()
         flash('新しいお知らせを投稿しました。', 'success')
@@ -373,7 +366,6 @@ def delete_announcement(announcement_id):
     flash('お知らせを削除しました。', 'success')
     return redirect(url_for('admin_announcements'))
 
-# init-admin (変更なし)
 @app.route('/init-admin')
 def init_admin():
     if User.query.count() == 1:

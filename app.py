@@ -5,7 +5,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-import jinja2 # nl2brフィルターのためにインポート
+# --- ↓↓ ここを修正しました ↓↓ ---
+from markupsafe import Markup
 
 # JSTタイムゾーンの定義 (UTC+9)
 JST = timezone(timedelta(hours=+9), 'JST')
@@ -35,7 +36,8 @@ login_manager.login_message_category = "error"
 # --- Custom Jinja Filter ---
 @app.template_filter('nl2br')
 def nl2br(s):
-    return jinja2.Markup(s.replace('\n', '<br>\n'))
+    # --- ↓↓ ここを修正しました ↓↓ ---
+    return Markup(s.replace('\n', '<br>\n'))
 
 # --- Models ---
 class User(UserMixin, db.Model):
@@ -346,10 +348,7 @@ def new_announcement():
         if not title or not content:
             flash('タイトルと内容の両方を入力してください。', 'error')
             return redirect(url_for('new_announcement'))
-        
-        # --- ↓↓ ここを修正しました ↓↓ ---
         announcement = Announcement(title=title, content=content, user_id=current_user.id)
-        
         db.session.add(announcement)
         db.session.commit()
         flash('新しいお知らせを投稿しました。', 'success')

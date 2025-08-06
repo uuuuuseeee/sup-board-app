@@ -197,12 +197,21 @@ def update_board(board_id):
         return redirect(url_for('index'))
     return render_template('update.html', board=board_to_update)
 
+# --- ↓↓ delete_board関数を修正 ↓↓ ---
 @app.route('/delete/<int:board_id>', methods=['POST'])
 @login_required
 def delete_board(board_id):
     board_to_delete = Board.query.get_or_404(board_id)
+
+    # 先に、関連する全ての履歴(子)を削除する
+    UpdateHistory.query.filter_by(board_id=board_id).delete()
+
+    # 次に、ボード本体(親)を削除する
     db.session.delete(board_to_delete)
+
+    # データベースの変更を保存する
     db.session.commit()
+    
     flash(f'ボード「{board_to_delete.name}」を削除しました。', 'success')
     return redirect(url_for('index'))
 

@@ -4,6 +4,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
+import click
 
 # JSTタイムゾーンの定義 (UTC+9)
 JST = timezone(timedelta(hours=+9), 'JST')
@@ -12,29 +14,16 @@ app = Flask(__name__)
 
 # --- Configuration ---
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_default_secret_key_for_development')
-
-# Renderの環境変数からDATABASE_URLを取得
 database_url = os.environ.get('DATABASE_URL')
-
-# DATABASE_URLが設定されているか（本番環境かどうか）で分岐
 if database_url:
-    # SQLAlchemyが'postgresql://'を要求するため、古い形式('postgres://')のURLを置換
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    # ローカル開発環境の場合、SQLiteをフォールバックとして使用
     basedir = os.path.abspath(os.path.dirname(__file__))
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'boards.db')
-
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# データベース接続の効率化（コネクションプーリング）
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    "pool_size": 5,
-    "pool_recycle": 280,
-    "pool_pre_ping": True,
-}
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"pool_recycle": 280}
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
@@ -48,9 +37,13 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
+    # --- ↓↓ 管理者フラグを追加 ↓↓ ---
+    is_admin = db.Column(db.Boolean, nullable=False, default=False)
+
     def set_password(self, password): self.password_hash = generate_password_hash(password)
     def check_password(self, password): return check_password_hash(self.password_hash, password)
 
+# ... (UpdateHistory, Boardモデルは変更なし) ...
 class UpdateHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     board_id = db.Column(db.Integer, db.ForeignKey('board.id'), nullable=False)
@@ -69,6 +62,17 @@ class Board(db.Model):
     notes = db.Column(db.Text, nullable=True)
     histories = db.relationship('UpdateHistory', backref='board', lazy=True, cascade="all, delete-orphan")
 
+
+# --- Decorators ---
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_admin:
+            flash('このページにアクセスするには管理者権限が必要です。', 'error')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 # --- Flask-Login Helper ---
 @login_manager.user_loader
 def load_user(user_id):
@@ -78,7 +82,22 @@ def load_user(user_id):
 with app.app_context():
     db.create_all()
 
+# --- CLI Commands ---
+@app.cli.command("promote-admin")
+@click.argument("username")
+def promote_admin_command(username):
+    """指定されたユーザーを管理者に昇格させます。"""
+    user = User.query.filter_by(username=username).first()
+    if user:
+        user.is_admin = True
+        db.session.commit()
+        print(f"ユーザー '{username}' は管理者に昇格しました。")
+    else:
+        print(f"ユーザー '{username}' が見つかりません。")
+
 # --- Routes ---
+# ... (login, register, logout, index, add, update, delete, bulk_update, historyの各関数は変更なし) ...
+# ただし、すべての@login_requiredの下に@admin_requiredを追加する必要がある操作もあるが、今回はユーザー管理のみに限定
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated: return redirect(url_for('index'))
@@ -199,21 +218,12 @@ def update_board(board_id):
         return redirect(url_for('index'))
     return render_template('update.html', board=board_to_update)
 
-# --- ↓↓ delete_board関数を修正 ↓↓ ---
 @app.route('/delete/<int:board_id>', methods=['POST'])
 @login_required
 def delete_board(board_id):
     board_to_delete = Board.query.get_or_404(board_id)
-    
-    # Boardモデルのcascade設定により、関連する履歴は自動で削除されるため、
-    # 手動での履歴削除は不要です。
-    
-    # ボード本体(親)を削除するだけでOK
     db.session.delete(board_to_delete)
-    
-    # データベースの変更を保存する
     db.session.commit()
-    
     flash(f'ボード「{board_to_delete.name}」を削除しました。', 'success')
     return redirect(url_for('index'))
 
@@ -250,8 +260,55 @@ def bulk_update():
 @login_required
 def history(board_id):
     board = Board.query.get_or_404(board_id)
-    histories = UpdateHistory.query.filter_by(board_id=board_id).order_by(UpdateHistory.id.desc()).all()
+    histories = UpdateHistory.query.filter_by(board_id=board.id).order_by(UpdateHistory.id.desc()).all()
     return render_template('history.html', board=board, histories=histories)
+
+
+# --- ↓↓ Admin Routes ↓↓ ---
+@app.route('/admin')
+@login_required
+@admin_required
+def admin_panel():
+    users = User.query.all()
+    return render_template('admin.html', users=users)
+
+@app.route('/admin/promote/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def promote_user(user_id):
+    user_to_promote = User.query.get_or_404(user_id)
+    user_to_promote.is_admin = True
+    db.session.commit()
+    flash(f"ユーザー '{user_to_promote.username}' は管理者に昇格しました。", 'success')
+    return redirect(url_for('admin_panel'))
+
+@app.route('/admin/demote/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def demote_user(user_id):
+    # 自分自身を降格させないための安全装置
+    if current_user.id == user_id:
+        flash('自分自身を降格させることはできません。', 'error')
+        return redirect(url_for('admin_panel'))
+    user_to_demote = User.query.get_or_404(user_id)
+    user_to_demote.is_admin = False
+    db.session.commit()
+    flash(f"ユーザー '{user_to_demote.username}' は一般ユーザーに降格しました。", 'success')
+    return redirect(url_for('admin_panel'))
+
+@app.route('/admin/delete/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_user(user_id):
+    # 自分自身を削除させないための安全装置
+    if current_user.id == user_id:
+        flash('自分自身を削除することはできません。', 'error')
+        return redirect(url_for('admin_panel'))
+    user_to_delete = User.query.get_or_404(user_id)
+    db.session.delete(user_to_delete)
+    db.session.commit()
+    flash(f"ユーザー '{user_to_delete.username}' を削除しました。", 'success')
+    return redirect(url_for('admin_panel'))
 
 
 if __name__ == '__main__':

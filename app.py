@@ -16,7 +16,6 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_default_secret_key_fo
 # Renderの環境変数からDATABASE_URLを取得
 database_url = os.environ.get('DATABASE_URL')
 
-# --- ↓↓ ここを、より確実な方法に修正しました ↓↓ ---
 # DATABASE_URLが設定されているか（本番環境かどうか）で分岐
 if database_url:
     # SQLAlchemyが'postgresql://'を要求するため、古い形式('postgres://')のURLを置換
@@ -29,6 +28,13 @@ else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'boards.db')
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# データベース接続の効率化（コネクションプーリング）
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_size": 5,
+    "pool_recycle": 280,
+    "pool_pre_ping": True,
+}
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
@@ -193,13 +199,21 @@ def update_board(board_id):
         return redirect(url_for('index'))
     return render_template('update.html', board=board_to_update)
 
+# --- ↓↓ delete_board関数を修正 ↓↓ ---
 @app.route('/delete/<int:board_id>', methods=['POST'])
 @login_required
 def delete_board(board_id):
     board_to_delete = Board.query.get_or_404(board_id)
-    UpdateHistory.query.filter_by(board_id=board_id).delete()
+    
+    # Boardモデルのcascade設定により、関連する履歴は自動で削除されるため、
+    # 手動での履歴削除は不要です。
+    
+    # ボード本体(親)を削除するだけでOK
     db.session.delete(board_to_delete)
+    
+    # データベースの変更を保存する
     db.session.commit()
+    
     flash(f'ボード「{board_to_delete.name}」を削除しました。', 'success')
     return redirect(url_for('index'))
 
@@ -236,8 +250,9 @@ def bulk_update():
 @login_required
 def history(board_id):
     board = Board.query.get_or_404(board_id)
-    histories = UpdateHistory.query.filter_by(board_id=board.id).order_by(UpdateHistory.id.desc()).all()
+    histories = UpdateHistory.query.filter_by(board_id=board_id).order_by(UpdateHistory.id.desc()).all()
     return render_template('history.html', board=board, histories=histories)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

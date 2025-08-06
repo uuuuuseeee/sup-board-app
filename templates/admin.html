@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}管理者ページ{% endblock %}
+{% block header %}管理者ページ - ユーザー管理{% endblock %}
+
+{% block content %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>ID</th>
+                <th>ユーザー名</th>
+                <th>役割</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td>{{ user.username }}</td>
+                <td>
+                    {% if user.is_admin %}
+                        <span class="badge bg-success">管理者</span>
+                    {% else %}
+                        <span class="badge bg-secondary">一般ユーザー</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.is_admin %}
+                        <!-- 自分自身でない場合のみ降格ボタンを表示 -->
+                        {% if user.id != current_user.id %}
+                        <form action="{{ url_for('demote_user', user_id=user.id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-warning btn-sm">降格</button>
+                        </form>
+                        {% endif %}
+                    {% else %}
+                        <form action="{{ url_for('promote_user', user_id=user.id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-primary btn-sm">昇格</button>
+                        </form>
+                    {% endif %}
+                    
+                    <!-- 自分自身でない場合のみ削除ボタンを表示 -->
+                    {% if user.id != current_user.id %}
+                    <form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST" style="display:inline;">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('本当にこのユーザーを削除しますか？関連するボード情報などは削除されません。');">削除</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

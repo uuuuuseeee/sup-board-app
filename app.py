@@ -153,7 +153,7 @@ def load_user(user_id):
 with app.app_context():
     db.create_all()
 
-# --- CLI Command (for local development) ---
+# --- CLI Command for Admin Promotion ---
 @app.cli.command("promote-admin")
 @click.argument("username")
 def promote_admin_command(username):
@@ -205,6 +205,7 @@ def guest_login():
     login_user(guest_user, remember=True)
     return redirect(url_for('dashboard'))
 
+# --- ↓↓ register関数を修正しました (大体200行目あたり) ↓↓ ---
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated: return redirect(url_for('dashboard'))
@@ -227,6 +228,7 @@ def register():
         return redirect(url_for('login'))
     # GETリクエスト時にはteamsを渡す必要がなくなった
     return render_template('auth/register.html')
+
 @app.route('/logout')
 @login_required
 def logout():
@@ -693,4 +695,3 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
-

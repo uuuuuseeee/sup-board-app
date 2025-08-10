@@ -605,47 +605,34 @@ def unassign_transport(transport_id):
 def run_lottery(practice_id):
     practice = Practice.query.get_or_404(practice_id)
     board_ids_for_lottery = request.form.getlist('board_ids_for_lottery')
-    
     if not board_ids_for_lottery:
         flash('抽選対象のボードが選択されていません。', 'error')
         return redirect(url_for('practice_detail', practice_id=practice_id))
-
     boards_to_take_home_count = len(board_ids_for_lottery)
-    
-    # 抽選対象者は「出席」のみ
     attendees = {att.user for att in practice.attendances if att.status == 'present'}
     transports_to = Transport.query.filter_by(practice_id=practice.id, direction='to').all()
     transports_from_confirmed = Transport.query.filter_by(practice_id=practice.id, direction='from').all()
-    
     transporters_to_users = {t.user for t in transports_to}
     transporters_from_confirmed_users = {t.user for t in transports_from_confirmed}
-    
     primary_pool = list(attendees - transporters_to_users - transporters_from_confirmed_users)
     secondary_pool = list(transporters_to_users - transporters_from_confirmed_users)
-    
     final_pool = []
     if len(primary_pool) >= boards_to_take_home_count:
         final_pool = primary_pool
     else:
         final_pool = primary_pool + secondary_pool
-
     if len(final_pool) < boards_to_take_home_count:
         flash(f'運搬可能な人数が足りません！(必要: {boards_to_take_home_count}人, 候補: {len(final_pool)}人)', 'error')
         return redirect(url_for('practice_detail', practice_id=practice_id))
-
-    # 重み付け抽選（復元なし）
+    weights = [1 / ((user.transport_count + 1) ** 2) for user in final_pool]
     winners = []
-    pool_with_weights = [(user, 1 / ((user.transport_count + 1) ** 2)) for user in final_pool]
-    
+    pool_with_weights = list(zip(final_pool, weights))
     for _ in range(boards_to_take_home_count):
         if not pool_with_weights: break
-        users, weights = zip(*pool_with_weights)
-        winner = random.choices(users, weights=weights, k=1)[0]
+        users, current_weights = zip(*pool_with_weights)
+        winner = random.choices(users, weights=current_weights, k=1)[0]
         winners.append(winner)
-        # 当選者をプールから削除
         pool_with_weights = [item for item in pool_with_weights if item[0].id != winner.id]
-
-    # 抽選結果を自動で割り当て
     for i, winner in enumerate(winners):
         board_id = board_ids_for_lottery[i]
         existing = Transport.query.filter_by(practice_id=practice_id, board_id=board_id, direction='from').first()
@@ -653,7 +640,6 @@ def run_lottery(practice_id):
             transport = Transport(practice_id=practice_id, user_id=winner.id, board_id=board_id, direction='from')
             db.session.add(transport)
             winner.transport_count += 1
-    
     db.session.commit()
     winner_names = [w.username for w in winners]
     flash(f'抽選が完了し、{", ".join(winner_names)} が運搬者に自動で割り当てられました。', 'success')
@@ -778,5 +764,6 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 

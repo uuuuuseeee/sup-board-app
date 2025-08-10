@@ -292,6 +292,7 @@ def board_index():
         location_counts[board.location] = location_counts.get(board.location, 0) + 1
     return render_template('boards/index.html', boards=all_boards, location_counts=location_counts)
 
+
 @app.route('/boards/add', methods=['GET', 'POST'])
 @login_required
 @member_required
@@ -773,6 +774,7 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 

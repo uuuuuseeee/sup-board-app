@@ -223,13 +223,23 @@ def register():
         if User.query.filter_by(username=username).first():
             flash('そのユーザー名は既に使用されています。', 'error')
             return redirect(url_for('register'))
-        new_user = User(username=username, generation=generation, team_id=team_id, role='member')
+        
+        # 最初のユーザーを自動で管理者に設定
+        is_first_user = User.query.count() == 0
+        role = 'admin' if is_first_user else 'member'
+        
+        new_user = User(username=username, generation=generation, team_id=team_id, role=role)
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
-        flash('ユーザー登録が完了しました。ログインしてください。', 'success')
+
+        if is_first_user:
+            flash('最初のユーザーとして登録され、管理者権限が付与されました。', 'success')
+        else:
+            flash('ユーザー登録が完了しました。ログインしてください。', 'success')
         return redirect(url_for('login'))
     return render_template('auth/register.html', teams=teams)
+
 
 @app.route('/logout')
 @login_required
@@ -771,3 +781,4 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+

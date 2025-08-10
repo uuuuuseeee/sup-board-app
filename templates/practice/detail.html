@@ -260,10 +260,11 @@
                     <p class="text-muted">持ち帰る必要のあるボードは、すべて手動で割り当て済みです。</p>
                 {% else %}
                 <form action="{{ url_for('run_lottery', practice_id=practice.id) }}" method="POST">
-                    <div class="mb-3">
+                   <!-- <div class="mb-3">
                         <label for="boards_to_leave" class="form-label">拠点に置いておくボード数</label>
                         <input type="number" class="form-control" name="boards_to_leave" id="boards_to_leave" value="0" min="0">
                     </div>
+                    -->
                     <div class="mb-3">
                         <label class="form-label">抽選対象のボードを選択</label>
                         <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
@@ -326,3 +327,4 @@
     });
 </script>
 {% endblock %}
+

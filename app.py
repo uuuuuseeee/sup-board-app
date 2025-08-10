@@ -405,7 +405,7 @@ def bulk_update():
         db.session.commit()
         flash(f'{updated_count}件のボード情報を一括更新しました。', 'success')
     return redirect(url_for('board_index'))
-
+    
 # --- Practice Management Routes ---
 @app.route('/practices')
 @login_required
@@ -774,6 +774,7 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 

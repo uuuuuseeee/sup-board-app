@@ -451,11 +451,8 @@ def practice_detail(practice_id):
     transports_to = Transport.query.filter_by(practice_id=practice.id, direction='to').all()
     transports_from = Transport.query.filter_by(practice_id=practice.id, direction='from').all()
     all_boards = Board.query.order_by(Board.name).all()
-    
-    # 帰りの運搬対象ボードリストを作成
     transported_to_board_ids = [t.board_id for t in transports_to]
     boards_at_practice = Board.query.filter((Board.location == practice.location) | (Board.id.in_(transported_to_board_ids))).all()
-    
     return render_template('practice/detail.html', 
                            practice=practice, 
                            user_attendance=user_attendance, 
@@ -645,6 +642,7 @@ def run_lottery(practice_id):
     flash(f'抽選が完了し、{", ".join(winner_names)} が運搬者に自動で割り当てられました。', 'success')
     return redirect(url_for('practice_detail', practice_id=practice_id))
 
+
 # --- Admin Routes ---
 @app.route('/admin')
 @login_required
@@ -764,6 +762,7 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 

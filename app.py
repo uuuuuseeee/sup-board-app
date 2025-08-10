@@ -271,27 +271,25 @@ def profile():
 def board_index():
     sort_by = request.args.get('sort_by', 'id')
     order = request.args.get('order', 'asc')
-    query = Board.query
+    
+    # まず、すべてのボードをデータベースから取得
+    all_boards_query = Board.query.all()
 
     if sort_by == 'name':
-        # 自然順ソートのためのロジック
-        name_text_part = func.regexp_replace(Board.name, '[0-9]+', '')
-        name_num_part = func.cast(func.coalesce(func.regexp_replace(Board.name, '[^0-9]+', ''), '0'), db.Integer)
-        
-        if order == 'desc':
-            query = query.order_by(name_text_part.desc(), name_num_part.desc())
-        else:
-            query = query.order_by(name_text_part.asc(), name_num_part.asc())
+        # Python側で自然順ソートを実行
+        def natural_sort_key(board):
+            parts = re.split('([0-9]+)', board.name)
+            parts[1::2] = [int(p) for p in parts[1::2] if p]
+            return parts
+        all_boards = sorted(all_boards_query, key=natural_sort_key, reverse=(order == 'desc'))
     else:
         # デフォルトはID順
-        query = query.order_by(Board.id.asc())
+        all_boards = sorted(all_boards_query, key=lambda b: b.id, reverse=(order == 'desc'))
 
-    all_boards = query.all()
     location_counts = {}
     for board in all_boards:
         location_counts[board.location] = location_counts.get(board.location, 0) + 1
     return render_template('boards/index.html', boards=all_boards, location_counts=location_counts)
-
 
 @app.route('/boards/add', methods=['GET', 'POST'])
 @login_required
@@ -774,6 +772,7 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 

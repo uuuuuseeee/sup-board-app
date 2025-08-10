@@ -7,12 +7,23 @@
     <!-- BootstrapのCSSを読み込む -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
     
+    <!-- カスタムCSSファイルを読み込む -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <!-- アプリのアイコンを設定 -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏄</text></svg>">
+
     <title>{% block title %}SUP MANAGE APP{% endblock %}</title>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('dashboard') }}">SUP MANAGE APP</a>
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-water" viewBox="0 0 16 16" style="vertical-align: -0.125em;">
+                  <path d="M.5 8a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5a.5.5 0 0 1 1 0V12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5a.5.5 0 0 1 .5-.5M2.223 7.03a.5.5 0 0 1 .364.606c-.32 1.218.239 2.428 1.152 3.116C4.697 11.42 6 11.5 6 11.5s.372-.42 1.152-.884c.813-.487 1.472-1.898 1.152-3.116a.5.5 0 1 1 .97.256c.346 1.325-.47 3.24-1.543 4.156C7.03 12.96 6 13.5 6 13.5s-1.03-.54-1.93-1.444C3.136 11.1 2.5 9.185 2.847 7.86a.5.5 0 0 1-.624-.376"/>
+                </svg>
+                SUP MANAGE APP
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>

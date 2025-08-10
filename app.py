@@ -271,10 +271,20 @@ def board_index():
     sort_by = request.args.get('sort_by', 'id')
     order = request.args.get('order', 'asc')
     query = Board.query
+
     if sort_by == 'name':
-        query = query.order_by(Board.name.desc()) if order == 'desc' else query.order_by(Board.name.asc())
+        # 自然順ソートのためのロジック
+        name_text_part = func.regexp_replace(Board.name, '[0-9]+', '')
+        name_num_part = func.cast(func.coalesce(func.regexp_replace(Board.name, '[^0-9]+', ''), '0'), db.Integer)
+        
+        if order == 'desc':
+            query = query.order_by(name_text_part.desc(), name_num_part.desc())
+        else:
+            query = query.order_by(name_text_part.asc(), name_num_part.asc())
     else:
+        # デフォルトはID順
         query = query.order_by(Board.id.asc())
+
     all_boards = query.all()
     location_counts = {}
     for board in all_boards:
@@ -762,6 +772,7 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 

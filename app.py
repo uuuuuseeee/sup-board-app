@@ -494,18 +494,6 @@ def answer_attendance(attendance_id):
     flash('出欠を更新しました。', 'success')
     return redirect(url_for('practice_detail', practice_id=attendance.practice_id))
 
-@app.route('/practices/<int:practice_id>/add_session', methods=['POST'])
-@login_required
-@admin_required
-def add_session(practice_id):
-    practice = Practice.query.get_or_404(practice_id)
-    session_count = len(practice.sessions)
-    new_session = PracticeSession(practice_id=practice.id, session_number=session_count + 1)
-    db.session.add(new_session)
-    db.session.commit()
-    flash(f'{session_count + 1}部を追加しました。', 'success')
-# _anchorで、リダイレクト後にスクロールする位置を指定
-    return redirect(url_for('practice_detail', practice_id=practice_id, _anchor='session-management'))
 
 @app.route('/practices/assign_member', methods=['POST'])
 @login_required
@@ -516,7 +504,18 @@ def assign_member():
     practice_id = request.form.get('practice_id')
     if not user_ids:
         flash('割り当てるメンバーが選択されていません。', 'error')
-        return redirect(url_for('practice_detail', practice_id=practice_id))
+        return redirect(url_for('practice_detail', pract@app.route('/practices/<int:practice_id>/add_session', methods=['POST'])
+@login_required
+@admin_required
+def add_session(practice_id):
+    practice = Practice.query.get_or_404(practice_id)
+    session_count = len(practice.sessions)
+    new_session = PracticeSession(practice_id=practice.id, session_number=session_count + 1)
+    db.session.add(new_session)
+    db.session.commit()
+    flash(f'{session_count + 1}部を追加しました。', 'success')
+    return redirect(url_for('practice_detail', practice_id=practice.id))
+ice_id=practice_id))
     session = PracticeSession.query.get(session_id)
     if not session:
         flash('セッションが見つかりません。', 'error')
@@ -654,7 +653,6 @@ def run_lottery(practice_id):
     flash(f'抽選が完了し、{", ".join(winner_names)} が運搬者に自動で割り当てられました。', 'success')
     return redirect(url_for('practice_detail', practice_id=practice_id))
 
-
 # --- Admin Routes ---
 @app.route('/admin')
 @login_required
@@ -774,6 +772,7 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 

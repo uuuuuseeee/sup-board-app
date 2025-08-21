@@ -504,7 +504,8 @@ def add_session(practice_id):
     db.session.add(new_session)
     db.session.commit()
     flash(f'{session_count + 1}部を追加しました。', 'success')
-    return redirect(url_for('practice_detail', practice_id=practice.id))
+# _anchorで、リダイレクト後にスクロールする位置を指定
+    return redirect(url_for('practice_detail', practice_id=practice_id, _anchor='session-management'))
 
 @app.route('/practices/assign_member', methods=['POST'])
 @login_required
@@ -773,6 +774,7 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 

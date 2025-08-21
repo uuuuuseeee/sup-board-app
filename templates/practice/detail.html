@@ -99,7 +99,7 @@
         </div>
     </div>
     <!-- 右側: 部制とメンバー割り当て -->
-    <div class="col-lg-8">
+    <div class="col-lg-8" id="session-management">
         <h4>部制管理</h4>
         <div class="mb-3 d-flex gap-2">
             <form action="{{ url_for('add_session', practice_id=practice.id) }}" method="POST">
@@ -107,6 +107,9 @@
             </form>
         </div>
         
+        <!-- ▼▼▼ ここに準備コードを追加しました ▼▼▼ -->
+        {% set transporter_to_ids = transports_to|map(attribute='user_id')|list %}
+
         {% for session in practice.sessions|sort(attribute='session_number') %}
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -117,7 +120,8 @@
             </div>
             <ul class="list-group list-group-flush">
                 {% for member in session.members|sort(attribute='username') %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
+                <!-- ▼▼▼ ここのliタグに、ハイライト用のif文を追加しました ▼▼▼ -->
+                <li class="list-group-item d-flex justify-content-between align-items-center {% if member.id in transporter_to_ids %}bg-info-subtle{% endif %}">
                     {{ member.username }} ({{ member.generation }})
                     <form action="{{ url_for('unassign_member', session_id=session.id, user_id=member.id) }}" method="POST">
                         <button type="submit" class="btn btn-outline-danger btn-sm">外す</button>

@@ -494,6 +494,17 @@ def answer_attendance(attendance_id):
     flash('出欠を更新しました。', 'success')
     return redirect(url_for('practice_detail', practice_id=attendance.practice_id))
 
+@app.route('/practices/<int:practice_id>/add_session', methods=['POST'])
+@login_required
+@admin_required
+def add_session(practice_id):
+    practice = Practice.query.get_or_404(practice_id)
+    session_count = len(practice.sessions)
+    new_session = PracticeSession(practice_id=practice.id, session_number=session_count + 1)
+    db.session.add(new_session)
+    db.session.commit()
+    flash(f'{session_count + 1}部を追加しました。', 'success')
+    return redirect(url_for('practice_detail', practice_id=practice.id, _anchor='session-management'))
 
 @app.route('/practices/assign_member', methods=['POST'])
 @login_required
@@ -504,22 +515,11 @@ def assign_member():
     practice_id = request.form.get('practice_id')
     if not user_ids:
         flash('割り当てるメンバーが選択されていません。', 'error')
-        return redirect(url_for('practice_detail', pract@app.route('/practices/<int:practice_id>/add_session', methods=['POST'])
-@login_required
-@admin_required
-def add_session(practice_id):
-    practice = Practice.query.get_or_404(practice_id)
-    session_count = len(practice.sessions)
-    new_session = PracticeSession(practice_id=practice.id, session_number=session_count + 1)
-    db.session.add(new_session)
-    db.session.commit()
-    flash(f'{session_count + 1}部を追加しました。', 'success')
-    return redirect(url_for('practice_detail', practice_id=practice.id))
-ice_id=practice_id))
+        return redirect(url_for('practice_detail', practice_id=practice_id, _anchor='session-management'))
     session = PracticeSession.query.get(session_id)
     if not session:
         flash('セッションが見つかりません。', 'error')
-        return redirect(url_for('practice_detail', practice_id=practice_id))
+        return redirect(url_for('practice_detail', practice_id=practice_id, _anchor='session-management'))
     assigned_count = 0
     assigned_usernames = []
     for user_id in user_ids:
@@ -533,7 +533,7 @@ ice_id=practice_id))
         flash(f'{", ".join(assigned_usernames)} を{session.session_number}部に割り当てました。', 'success')
     else:
         flash('割り当てる新しいメンバーがいませんでした。', 'info')
-    return redirect(url_for('practice_detail', practice_id=practice_id))
+    return redirect(url_for('practice_detail', practice_id=practice_id, _anchor='session-management'))
 
 @app.route('/practices/unassign_member/<int:session_id>/<int:user_id>', methods=['POST'])
 @login_required
@@ -545,7 +545,7 @@ def unassign_member(session_id, user_id):
         session.members.remove(user)
         db.session.commit()
         flash(f'{user.username}を{session.session_number}部から外しました。', 'success')
-    return redirect(url_for('practice_detail', practice_id=session.practice_id))
+    return redirect(url_for('practice_detail', practice_id=session.practice_id, _anchor='session-management'))
 
 @app.route('/practices/delete_session/<int:session_id>', methods=['POST'])
 @login_required
@@ -556,7 +556,7 @@ def delete_session(session_id):
     db.session.delete(session_to_delete)
     db.session.commit()
     flash(f'{session_to_delete.session_number}部を削除しました。', 'success')
-    return redirect(url_for('practice_detail', practice_id=practice_id))
+    return redirect(url_for('practice_detail', practice_id=practice_id, _anchor='session-management'))
 
 @app.route('/practices/delete/<int:practice_id>', methods=['POST'])
 @login_required
@@ -578,20 +578,28 @@ def assign_transport():
     direction = request.form.get('direction', 'to')
     if not all([practice_id, user_id, board_ids]):
         flash('運搬者とボードを選択してください。', 'error')
-        return redirect(url_for('practice_detail', practice_id=practice_id))
+        return redirect(url_for('practice_detail', practice_id=practice_id, _anchor='transport-planning'))
     user = User.query.get(user_id)
     if not user:
         flash('ユーザーが見つかりません。', 'error')
-        return redirect(url_for('practice_detail', practice_id=practice_id))
+        return redirect(url_for('practice_detail', practice_id=practice_id, _anchor='transport-planning'))
     for board_id in board_ids:
         existing = Transport.query.filter_by(practice_id=practice_id, board_id=board_id, direction=direction).first()
-        if not existing:
+        if existing:
+             # 上書き処理
+            old_user = User.query.get(existing.user_id)
+            if old_user:
+                old_user.transport_count = max(0, old_user.transport_count - 1)
+            existing.user_id = user_id
+            user.transport_count += 1
+        else:
+            # 新規登録
             transport = Transport(practice_id=practice_id, user_id=user_id, board_id=board_id, direction=direction)
             db.session.add(transport)
             user.transport_count += 1
     db.session.commit()
     flash('運搬情報を登録しました。', 'success')
-    return redirect(url_for('practice_detail', practice_id=practice_id))
+    return redirect(url_for('practice_detail', practice_id=practice_id, _anchor='transport-planning'))
 
 @app.route('/practices/unassign_transport/<int:transport_id>', methods=['POST'])
 @login_required
@@ -605,7 +613,7 @@ def unassign_transport(transport_id):
     db.session.delete(transport_to_delete)
     db.session.commit()
     flash('運搬情報を削除しました。', 'success')
-    return redirect(url_for('practice_detail', practice_id=practice_id))
+    return redirect(url_for('practice_detail', practice_id=practice_id, _anchor='transport-planning'))
 
 @app.route('/practices/<int:practice_id>/run_lottery', methods=['POST'])
 @login_required
@@ -615,7 +623,7 @@ def run_lottery(practice_id):
     board_ids_for_lottery = request.form.getlist('board_ids_for_lottery')
     if not board_ids_for_lottery:
         flash('抽選対象のボードが選択されていません。', 'error')
-        return redirect(url_for('practice_detail', practice_id=practice_id))
+        return redirect(url_for('practice_detail', practice_id=practice_id, _anchor='transport-planning'))
     boards_to_take_home_count = len(board_ids_for_lottery)
     attendees = {att.user for att in practice.attendances if att.status == 'present'}
     transports_to = Transport.query.filter_by(practice_id=practice.id, direction='to').all()
@@ -631,7 +639,7 @@ def run_lottery(practice_id):
         final_pool = primary_pool + secondary_pool
     if len(final_pool) < boards_to_take_home_count:
         flash(f'運搬可能な人数が足りません！(必要: {boards_to_take_home_count}人, 候補: {len(final_pool)}人)', 'error')
-        return redirect(url_for('practice_detail', practice_id=practice_id))
+        return redirect(url_for('practice_detail', practice_id=practice_id, _anchor='transport-planning'))
     weights = [1 / ((user.transport_count + 1) ** 2) for user in final_pool]
     winners = []
     pool_with_weights = list(zip(final_pool, weights))
@@ -651,7 +659,8 @@ def run_lottery(practice_id):
     db.session.commit()
     winner_names = [w.username for w in winners]
     flash(f'抽選が完了し、{", ".join(winner_names)} が運搬者に自動で割り当てられました。', 'success')
-    return redirect(url_for('practice_detail', practice_id=practice_id))
+    return redirect(url_for('practice_detail', practice_id=practice_id, _anchor='transport-planning'))
+
 
 # --- Admin Routes ---
 @app.route('/admin')
@@ -772,6 +781,7 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 

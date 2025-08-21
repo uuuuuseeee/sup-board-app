@@ -101,7 +101,7 @@
     <!-- 右側: 部制とメンバー割り当て -->
     <div class="col-lg-8">
         <h4>部制管理</h4>
-        <div class="mb-3">
+        <div class="mb-3 d-flex gap-2">
             <form action="{{ url_for('add_session', practice_id=practice.id) }}" method="POST">
                 <button type="submit" class="btn btn-secondary">部を追加する</button>
             </form>
@@ -260,11 +260,6 @@
                     <p class="text-muted">持ち帰る必要のあるボードは、すべて手動で割り当て済みです。</p>
                 {% else %}
                 <form action="{{ url_for('run_lottery', practice_id=practice.id) }}" method="POST">
-                   <!-- <div class="mb-3">
-                        <label for="boards_to_leave" class="form-label">拠点に置いておくボード数</label>
-                        <input type="number" class="form-control" name="boards_to_leave" id="boards_to_leave" value="0" min="0">
-                    </div>
-                    -->
                     <div class="mb-3">
                         <label class="form-label">抽選対象のボードを選択</label>
                         <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
@@ -327,4 +322,3 @@
     });
 </script>
 {% endblock %}
-

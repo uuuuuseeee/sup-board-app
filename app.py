@@ -181,8 +181,9 @@ def index():
 @login_required
 def dashboard():
     unanswered_attendances = Attendance.query.filter_by(user_id=current_user.id, status='unanswered').join(Practice).order_by(Practice.practice_date).all()
-    announcements = Announcement.query.order_by(Announcement.timestamp.desc()).limit(3).all()
+    announcements = Announcement.query.order_by(Announcement.timestamp.desc()).all()
     return render_template('dashboard.html', unanswered_attendances=unanswered_attendances, announcements=announcements)
+
 
 # --- User Auth & Profile Routes ---
 @app.route('/login', methods=['GET', 'POST'])
@@ -794,6 +795,7 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 

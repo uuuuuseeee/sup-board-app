@@ -739,12 +739,25 @@ def delete_user(user_id):
     if current_user.id == user_id:
         flash('自分自身を削除することはできません。', 'error')
         return redirect(url_for('admin_users'))
+    
     user_to_delete = User.query.get_or_404(user_id)
-    db.session.delete(user_to_delete)
-    db.session.commit()
-    flash(f"ユーザー '{user_to_delete.username}' を削除しました。", 'success')
-    return redirect(url_for('admin_users'))
 
+    # 関連する子レコードを先に削除
+    Announcement.query.filter_by(user_id=user_id).delete()
+    Attendance.query.filter_by(user_id=user_id).delete()
+    Transport.query.filter_by(user_id=user_id).delete()
+    
+    # ユーザーをセッションから削除
+    for session in PracticeSession.query.all():
+        if user_to_delete in session.members:
+            session.members.remove(user_to_delete)
+
+    # ユーザー本体を削除
+    db.session.delete(user_to_delete)
+    
+    db.session.commit()
+    flash(f"ユーザー '{user_to_delete.username}' と関連データをすべて削除しました。", 'success')
+    return redirect(url_for('admin_users'))
 @app.route('/admin/announcements')
 @login_required
 @admin_required
@@ -781,6 +794,7 @@ def delete_announcement(announcement_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 

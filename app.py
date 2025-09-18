@@ -664,17 +664,19 @@ def create_practice():
 @app.route("/practices/<int:practice_id>")
 @login_required
 def practice_detail(practice_id: int):
-    # N+1回避のためselectinload
     practice = (
-        Practice.query.options(
-            selectinload(Practice.sessions).selectinload(Practice.sessions.members),
-            selectinload(Practice.attendances).selectinload(Attendance.user),
-            selectinload(Practice.transports).selectinload(Transport.user),
-            selectinload(Practice.transports).selectinload(Transport.board),
-        )
-        .filter_by(id=practice_id)
-        .first_or_404()
+    Practice.query.options(
+        # NG: selectinload(Practice.sessions).selectinload(Practice.sessions.members),
+        selectinload(Practice.sessions).selectinload(PracticeSession.members),
+        selectinload(Practice.attendances).selectinload(Attendance.user),
+        selectinload(Practice.transports).selectinload(Transport.user),
+        selectinload(Practice.transports).selectinload(Transport.board),
     )
+    .filter_by(id=practice_id)
+    .first_or_404()
+)
+    # N+1回避のためselectinload
+
 
     user_attendance = Attendance.query.filter_by(practice_id=practice.id, user_id=current_user.id).first()
     all_attendances: List[Attendance] = (
@@ -1118,3 +1120,4 @@ if __name__ == "__main__":
     if debug:
         logger.info("Debug mode is ON")
     app.run(debug=debug)
+

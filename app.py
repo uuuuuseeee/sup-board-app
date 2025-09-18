@@ -664,27 +664,17 @@ def create_practice():
 @app.route("/practices/<int:practice_id>")
 @login_required
 def practice_detail(practice_id: int):
-    # N+1回避 + 転送量削減（必要カラムのみ）
     practice = (
         Practice.query.options(
-            # セッションとメンバー（User の必要項目のみ）
-            selectinload(Practice.sessions)
-                .selectinload(PracticeSession.members)
-                .load_only(User.id, User.username, User.generation),
+            # セッション -> メンバー
+            selectinload(Practice.sessions).selectinload(PracticeSession.members),
 
-            # 出欠（Attendance の必要項目のみ）+ ユーザーの必要項目のみ
-            selectinload(Practice.attendances)
-                .load_only(Attendance.id, Attendance.user_id, Attendance.status)
-                .selectinload(Attendance.user)
-                .load_only(User.id, User.username, User.generation),
+            # 出欠 -> ユーザー
+            selectinload(Practice.attendances).selectinload(Attendance.user),
 
-            # 運搬（Transport の必要項目のみ）+ user/board の必要項目のみ
-            selectinload(Practice.transports)
-                .load_only(Transport.id, Transport.user_id, Transport.board_id, Transport.direction)
-                .selectinload(Transport.user)
-                .load_only(User.id, User.username)
-                .selectinload(Transport.board)
-                .load_only(Board.id, Board.name),
+            # 重要: transports を起点に user, board を「別々の」オプションとして指定
+            selectinload(Practice.transports).selectinload(Transport.user),
+            selectinload(Practice.transports).selectinload(Transport.board),
         )
         .filter_by(id=practice_id)
         .first_or_404()
@@ -1144,5 +1134,6 @@ if __name__ == "__main__":
     if debug:
         logger.info("Debug mode is ON")
     app.run(debug=debug)
+
 
 

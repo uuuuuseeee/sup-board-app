@@ -4,7 +4,7 @@ Admin panel blueprint.
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.extensions import db
-from app.models import Team, User, Announcement, PracticeSession, Attendance, Transport
+from app.models import Team, User, Announcement, PracticeSession, Attendance, TransportLegacy, Location
 from app.decorators import admin_required
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -148,3 +148,111 @@ def delete_announcement(announcement_id: int):
     db.session.commit()
     flash("お知らせを削除しました。", "success")
     return redirect(url_for("admin.announcements"))
+
+
+# =============================================================================
+# 拠点管理
+# =============================================================================
+
+@bp.route("/locations")
+@login_required
+@admin_required
+def locations():
+    """拠点一覧"""
+    bases = Location.query.filter_by(is_base=True).order_by(Location.display_order).all()
+    waypoints = Location.query.filter_by(is_base=False).order_by(Location.name).all()
+    return render_template("admin/locations.html", bases=bases, waypoints=waypoints)
+
+
+@bp.route("/locations/add", methods=["POST"])
+@login_required
+@admin_required
+def add_location():
+    """拠点追加"""
+    name = request.form.get("name")
+    is_base = request.form.get("is_base") == "on"
+    
+    if not name:
+        flash("拠点名を入力してください。", "error")
+        return redirect(url_for("admin.locations"))
+    
+    if Location.query.filter_by(name=name).first():
+        flash("その名前は既に使用されています。", "error")
+        return redirect(url_for("admin.locations"))
+    
+    # 表示順を最後に
+    max_order = db.session.query(db.func.max(Location.display_order)).scalar() or 0
+    
+    location = Location(
+        name=name,
+        is_base=is_base,
+        display_order=max_order + 1,
+        created_by_id=current_user.id
+    )
+    db.session.add(location)
+    db.session.commit()
+    flash(f"拠点「{name}」を追加しました。", "success")
+    return redirect(url_for("admin.locations"))
+
+
+@bp.route("/locations/<int:location_id>/update", methods=["POST"])
+@login_required
+@admin_required
+def update_location(location_id):
+    """拠点編集"""
+    location = Location.query.get_or_404(location_id)
+    
+    name = request.form.get("name")
+    if name:
+        location.name = name
+    
+    location.is_base = request.form.get("is_base") == "on"
+    
+    db.session.commit()
+    flash(f"拠点「{location.name}」を更新しました。", "success")
+    return redirect(url_for("admin.locations"))
+
+
+@bp.route("/locations/<int:location_id>/delete", methods=["POST"])
+@login_required
+@admin_required
+def delete_location(location_id):
+    """拠点削除"""
+    location = Location.query.get_or_404(location_id)
+    name = location.name
+    db.session.delete(location)
+    db.session.commit()
+    flash(f"拠点「{name}」を削除しました。", "success")
+    return redirect(url_for("admin.locations"))
+
+
+@bp.route("/locations/<int:location_id>/move/<direction>", methods=["POST"])
+@login_required
+@admin_required
+def move_location(location_id, direction):
+    """拠点の表示順変更"""
+    location = Location.query.get_or_404(location_id)
+    
+    if direction == "up":
+        # 上に移動
+        prev_location = Location.query.filter(
+            Location.is_base == True,
+            Location.display_order < location.display_order
+        ).order_by(Location.display_order.desc()).first()
+        
+        if prev_location:
+            location.display_order, prev_location.display_order = prev_location.display_order, location.display_order
+            db.session.commit()
+    
+    elif direction == "down":
+        # 下に移動
+        next_location = Location.query.filter(
+            Location.is_base == True,
+            Location.display_order > location.display_order
+        ).order_by(Location.display_order.asc()).first()
+        
+        if next_location:
+            location.display_order, next_location.display_order = next_location.display_order, location.display_order
+            db.session.commit()
+    
+    return redirect(url_for("admin.locations"))

@@ -87,16 +87,11 @@ def add():
 def update(board_id: int):
     board_to_update = Board.query.get_or_404(board_id)
     if request.method == "POST":
-        previous_location = board_to_update.location
-        previous_user = board_to_update.user
-
         new_name = request.form.get("name")
         new_serial_number = (request.form.get("serial_number") or None) or None
         notes = request.form.get("notes")
-        new_location = get_selected_location(request.form)
-        new_user = current_user.username
 
-        if not all([new_name, new_location]):
+        if not new_name:
             flash("必須項目が入力されていません。", "error")
             return redirect(url_for("boards.update", board_id=board_id))
 
@@ -110,23 +105,10 @@ def update(board_id: int):
             flash(f'シリアル番号「{new_serial_number}」は既に使用されています。', "error")
             return redirect(url_for("boards.update", board_id=board_id))
 
-        current_time_jst = now_jst_str()
-        if previous_location != new_location or previous_user != new_user:
-            history_entry = UpdateHistory(
-                board_id=board_id,
-                previous_location=previous_location,
-                new_location=new_location,
-                updated_by=new_user,
-                updated_at=current_time_jst,
-            )
-            db.session.add(history_entry)
-
         board_to_update.name = new_name
         board_to_update.serial_number = new_serial_number
         board_to_update.notes = notes
-        board_to_update.location = new_location
-        board_to_update.user = new_user
-        board_to_update.updated_at = current_time_jst
+        board_to_update.updated_at = now_jst_str()
 
         db.session.commit()
         flash(f'ボード「{board_to_update.name}」が正常に更新されました。', "success")
@@ -148,9 +130,8 @@ def delete(board_id: int):
 @bp.route("/history/<int:board_id>")
 @login_required
 def history(board_id: int):
-    board = Board.query.get_or_404(board_id)
-    histories = UpdateHistory.query.filter_by(board_id=board.id).order_by(UpdateHistory.id.desc()).all()
-    return render_template("boards/history.html", board=board, histories=histories)
+    """旧履歴ページ - 新しい運搬履歴ページへリダイレクト"""
+    return redirect(url_for("transports.board_history", board_id=board_id))
 
 
 @bp.route("/bulk_update", methods=["POST"])

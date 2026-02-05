@@ -2,7 +2,7 @@
 Authentication and user profile blueprint.
 """
 import os
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from app.extensions import db
 from app.models import User, Team
@@ -11,11 +11,32 @@ from app.utils import to_int_or_none
 bp = Blueprint('auth', __name__)
 
 
+def _get_or_create_dev_user():
+    """開発用のダミーユーザーを取得または作成する"""
+    dev_user = User.query.filter_by(username="dev_admin").first()
+    if not dev_user:
+        dev_user = User(username="dev_admin", role="admin")
+        dev_user.set_password("dev")
+        db.session.add(dev_user)
+        db.session.commit()
+    return dev_user
+
+
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for("main.dashboard"))
+    
+    # 開発モードの場合、POSTで自動ログイン
     if request.method == "POST":
+        if os.environ.get("FLASK_DEBUG") == "1":
+            # 開発モード: ダミーユーザーで自動ログイン
+            dev_user = _get_or_create_dev_user()
+            login_user(dev_user, remember=True)
+            flash("開発モード: 自動ログインしました", "info")
+            return redirect(url_for("main.dashboard"))
+        
+        # 本番モード: 通常の認証
         username = request.form.get("username") or ""
         password = request.form.get("password") or ""
         user = User.query.filter_by(username=username).first()

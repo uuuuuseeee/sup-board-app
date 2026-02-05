@@ -1,0 +1,344 @@
+{% extends 'base.html' %}
+
+{% block title %}運搬登録{% endblock %}
+{% block header %}運搬登録{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-body">
+                <form action="{{ url_for('transports.new') }}" method="POST" id="transportForm">
+                    <!-- ボード選択 -->
+                    <div class="mb-4">
+                        <label for="board_id" class="form-label fw-bold">ボード <span class="text-danger">*</span></label>
+                        <select name="board_id" id="board_id" class="form-select" required onchange="updateDefaultOrigin()">
+                            <option value="">選択してください</option>
+                            {% for board in boards %}
+                            <option value="{{ board.id }}" {{ 'selected' if board.id == selected_board_id else '' }}>
+                                {{ board.name }} （現在地: {{ board.location }}）
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <hr>
+
+                    <!-- 出発地 -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">出発地 <span class="text-danger">*</span></label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="origin_type" id="origin_type_base" value="base" checked onchange="toggleOriginInput()">
+                            <label class="form-check-label" for="origin_type_base">拠点から選択</label>
+                        </div>
+                        <select name="origin_base" id="origin_base" class="form-select mt-2">
+                            <optgroup label="拠点">
+                                {% for base in bases %}
+                                <option value="{{ base.name }}" {{ 'selected' if base.name == default_origin else '' }}>
+                                    {{ base.name }}
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                            {% if waypoints %}
+                            <optgroup label="中継地点">
+                                {% for wp in waypoints %}
+                                <option value="{{ wp.name }}" {{ 'selected' if wp.name == default_origin else '' }}>
+                                    {{ wp.name }}
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endif %}
+                        </select>
+                        
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="radio" name="origin_type" id="origin_type_other" value="other" onchange="toggleOriginInput()">
+                            <label class="form-check-label" for="origin_type_other">その他（自由入力）</label>
+                        </div>
+                        <input type="text" name="origin_other" id="origin_other" class="form-control mt-2" placeholder="場所を入力" style="display:none;">
+                    </div>
+
+                    <hr>
+
+                    <!-- 目的地 -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">目的地</label>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="destination_pending" id="destination_pending" onchange="toggleDestination()">
+                            <label class="form-check-label text-warning" for="destination_pending">目的地未定</label>
+                        </div>
+                        
+                        <div id="destination_section">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="destination_type" id="destination_type_base" value="base" checked onchange="toggleDestinationInput()">
+                                <label class="form-check-label" for="destination_type_base">拠点から選択</label>
+                            </div>
+                            <select name="destination_base" id="destination_base" class="form-select mt-2">
+                                <optgroup label="拠点">
+                                    {% for base in bases %}
+                                    <option value="{{ base.name }}">{{ base.name }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% if waypoints %}
+                                <optgroup label="中継地点">
+                                    {% for wp in waypoints %}
+                                    <option value="{{ wp.name }}">{{ wp.name }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endif %}
+                            </select>
+                            
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="radio" name="destination_type" id="destination_type_other" value="other" onchange="toggleDestinationInput()">
+                                <label class="form-check-label" for="destination_type_other">その他（自由入力）</label>
+                            </div>
+                            <input type="text" name="destination_other" id="destination_other" class="form-control mt-2" placeholder="場所を入力" style="display:none;">
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- 出発予定 -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">出発予定 <span class="text-danger">*</span></label>
+                            <div id="departure_date_section">
+                                <input type="date" name="departure_date" id="departure_date" class="form-control mb-2" required>
+                                <select name="departure_timing" class="form-select">
+                                    {% for value, label in TIMING_OPTIONS %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">到着予定</label>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="arrival_pending" id="arrival_pending" onchange="toggleArrivalDate()">
+                                <label class="form-check-label text-warning" for="arrival_pending">到着日未定</label>
+                            </div>
+                            <div id="arrival_section">
+                                <input type="date" name="arrival_date" id="arrival_date" class="form-control mb-2">
+                                <select name="arrival_timing" class="form-select">
+                                    {% for value, label in TIMING_OPTIONS %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- 運搬理由 -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">運搬理由 <span class="text-danger">*</span></label>
+                        {% for type_id, label in REASON_TYPES.items() %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="reason_type" id="reason_{{ type_id }}" value="{{ type_id }}" 
+                                   {{ 'checked' if type_id == 1 else '' }} onchange="toggleReasonDetail()">
+                            <label class="form-check-label" for="reason_{{ type_id }}">{{ label }}</label>
+                        </div>
+                        {% endfor %}
+                        <input type="text" name="reason_detail" id="reason_detail" class="form-control mt-2" placeholder="理由を入力" style="display:none;">
+                    </div>
+
+                    <hr>
+
+                    <!-- 運搬者 -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">運搬者 <span class="text-danger">*</span></label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="carrier_type" id="carrier_type_registered" value="registered" checked onchange="toggleCarrierInput()">
+                            <label class="form-check-label" for="carrier_type_registered">登録ユーザー</label>
+                        </div>
+                        <select name="carrier_user_id" id="carrier_user_id" class="form-select mt-2">
+                            {% for user in users %}
+                            <option value="{{ user.id }}" {{ 'selected' if user.id == current_user.id else '' }}>
+                                {{ user.username }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="radio" name="carrier_type" id="carrier_type_unregistered" value="unregistered" onchange="toggleCarrierInput()">
+                            <label class="form-check-label" for="carrier_type_unregistered">非登録ユーザー</label>
+                        </div>
+                        <div id="unregistered_carrier_section" style="display:none;">
+                            <input type="text" name="carrier_unregistered_name" id="carrier_unregistered_name" class="form-control mt-2" placeholder="名前を入力">
+                            <small class="text-muted">※確定には長押しが必要です</small>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- リレー運搬（追加の運搬者） -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">リレー運搬（追加の運搬者）</label>
+                        <div id="additional_carriers">
+                            <!-- 動的に追加 -->
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addCarrier()">
+                            <i class="bi bi-plus"></i> 運搬者を追加
+                        </button>
+                    </div>
+
+                    <hr>
+
+                    <!-- 中継地点 -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">中継地点</label>
+                        <div id="waypoints">
+                            <!-- 動的に追加 -->
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addWaypoint()">
+                            <i class="bi bi-plus"></i> 中継地点を追加
+                        </button>
+                    </div>
+
+                    <hr>
+
+                    <!-- 送信ボタン -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">登録する</button>
+                        <a href="{{ url_for('transports.index') }}" class="btn btn-secondary">キャンセル</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// デフォルト出発地の更新
+function updateDefaultOrigin() {
+    const boardId = document.getElementById('board_id').value;
+    if (boardId) {
+        fetch(`/transports/api/board-origin/${boardId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.origin) {
+                    const select = document.getElementById('origin_base');
+                    for (let option of select.options) {
+                        if (option.value === data.origin) {
+                            option.selected = true;
+                            break;
+                        }
+                    }
+                }
+            });
+    }
+}
+
+// 出発地入力切り替え
+function toggleOriginInput() {
+    const isOther = document.getElementById('origin_type_other').checked;
+    document.getElementById('origin_base').style.display = isOther ? 'none' : 'block';
+    document.getElementById('origin_other').style.display = isOther ? 'block' : 'none';
+}
+
+// 目的地セクション切り替え
+function toggleDestination() {
+    const isPending = document.getElementById('destination_pending').checked;
+    document.getElementById('destination_section').style.display = isPending ? 'none' : 'block';
+}
+
+// 到着日切り替え
+function toggleArrivalDate() {
+    const isPending = document.getElementById('arrival_pending').checked;
+    document.getElementById('arrival_section').style.display = isPending ? 'none' : 'block';
+}
+
+// 目的地入力切り替え
+function toggleDestinationInput() {
+    const isOther = document.getElementById('destination_type_other').checked;
+    document.getElementById('destination_base').style.display = isOther ? 'none' : 'block';
+    document.getElementById('destination_other').style.display = isOther ? 'block' : 'none';
+}
+
+
+
+// 理由詳細切り替え
+function toggleReasonDetail() {
+    const isOther = document.getElementById('reason_4').checked;
+    document.getElementById('reason_detail').style.display = isOther ? 'block' : 'none';
+}
+
+// 運搬者入力切り替え
+function toggleCarrierInput() {
+    const isUnregistered = document.getElementById('carrier_type_unregistered').checked;
+    document.getElementById('carrier_user_id').style.display = isUnregistered ? 'none' : 'block';
+    document.getElementById('unregistered_carrier_section').style.display = isUnregistered ? 'block' : 'none';
+}
+
+// 運搬者追加
+let carrierCount = 0;
+function addCarrier() {
+    carrierCount++;
+    const container = document.getElementById('additional_carriers');
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `
+        <span class="input-group-text">${carrierCount + 1}.</span>
+        <select name="additional_carrier_user_id" class="form-select">
+            {% for user in users %}
+            <option value="{{ user.id }}">{{ user.username }}</option>
+            {% endfor %}
+        </select>
+        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">
+            <i class="bi bi-x"></i>
+        </button>
+    `;
+    container.appendChild(div);
+}
+
+// 中継地点追加
+let waypointCount = 0;
+function addWaypoint() {
+    waypointCount++;
+    const container = document.getElementById('waypoints');
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `
+        <span class="input-group-text">${waypointCount}.</span>
+        <input type="text" name="waypoint_location" class="form-control" placeholder="中継地点を入力">
+        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">
+            <i class="bi bi-x"></i>
+        </button>
+    `;
+    container.appendChild(div);
+}
+
+// 非登録ユーザーの長押し確認
+let pressTimer;
+const submitBtn = document.getElementById('submitBtn');
+const form = document.getElementById('transportForm');
+
+submitBtn.addEventListener('mousedown', function(e) {
+    const isUnregistered = document.getElementById('carrier_type_unregistered').checked;
+    if (isUnregistered) {
+        e.preventDefault();
+        submitBtn.textContent = '長押し中...';
+        pressTimer = setTimeout(function() {
+            form.submit();
+        }, 1500);
+    }
+});
+
+submitBtn.addEventListener('mouseup', function() {
+    clearTimeout(pressTimer);
+    submitBtn.textContent = '登録する';
+});
+
+submitBtn.addEventListener('mouseleave', function() {
+    clearTimeout(pressTimer);
+    submitBtn.textContent = '登録する';
+});
+
+// 今日の日付をデフォルトに
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('departure_date').value = today;
+    document.getElementById('arrival_date').value = today;
+});
+</script>
+{% endblock %}

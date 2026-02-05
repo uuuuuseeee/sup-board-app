@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}目的地未定一覧{% endblock %}
+{% block header %}目的地未定一覧{% endblock %}
+
+{% block content %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    目的地または日程が未定の運搬です。早めに確定してください。
+</div>
+
+{% if transports %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>ボード</th>
+                <th>出発地</th>
+                <th>現在地</th>
+                <th>運搬者</th>
+                <th>未定日数</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for transport in transports %}
+            <tr class="{{ 'table-danger' if transport.days_pending >= 3 else '' }}">
+                <td>{{ transport.board.name }}</td>
+                <td>{{ transport.origin }}</td>
+                <td>{{ transport.current_location or transport.origin }}</td>
+                <td>
+                    {% for carrier in transport.carriers %}
+                    {{ carrier.carrier_name }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+                <td>
+                    <span class="badge {{ 'bg-danger' if transport.days_pending >= 3 else 'bg-warning' }}">
+                        {{ transport.days_pending }}日
+                    </span>
+                </td>
+                <td>
+                    {% set is_carrier = false %}
+                    {% for carrier in transport.carriers %}
+                        {% if carrier.user_id == current_user.id %}
+                            {% set is_carrier = true %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if is_carrier or current_user.role == 'admin' %}
+                    <a href="{{ url_for('transports.detail', transport_id=transport.id) }}" class="btn btn-sm btn-primary">
+                        目的地を設定
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('transports.detail', transport_id=transport.id) }}" class="btn btn-sm btn-outline-secondary">
+                        詳細を見る
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-success">
+    <i class="bi bi-check-circle"></i>
+    目的地未定の運搬はありません。
+</div>
+{% endif %}
+
+<a href="{{ url_for('transports.index') }}" class="btn btn-secondary mt-3">
+    <i class="bi bi-arrow-left"></i> 運搬一覧に戻る
+</a>
+{% endblock %}

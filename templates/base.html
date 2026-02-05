@@ -18,7 +18,7 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+            <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">
                 SUP MANAGE APP
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,23 +29,23 @@
                     {% if current_user.is_authenticated %}
                         {% if current_user.role == 'admin' %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('admin_panel') }}">管理者ページ</a>
+                            <a class="nav-link" href="{{ url_for('admin.panel') }}">管理者ページ</a>
                         </li>
                         {% endif %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('profile') }}">
+                            <a class="nav-link" href="{{ url_for('auth.profile') }}">
                                 こんにちは, {{ current_user.username }} さん
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="btn btn-outline-light" href="{{ url_for('logout') }}">ログアウト</a>
+                            <a class="btn btn-outline-light" href="{{ url_for('auth.logout') }}">ログアウト</a>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('login') }}">ログイン</a>
+                            <a class="nav-link" href="{{ url_for('auth.login') }}">ログイン</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('register') }}">新規登録</a>
+                            <a class="nav-link" href="{{ url_for('auth.register') }}">新規登録</a>
                         </li>
                     {% endif %}
                 </ul>

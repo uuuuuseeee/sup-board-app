@@ -12,7 +12,7 @@
             </div>
             <div class="card-body">
                 {% if user_attendance %}
-                <form method="POST" action="{{ url_for('answer_attendance', attendance_id=user_attendance.id) }}">
+                <form method="POST" action="{{ url_for('practices.answer', attendance_id=user_attendance.id) }}">
                     <div class="mb-3">
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="status" id="status_present" value="present" {% if user_attendance.status == 'present' %}checked{% endif %} onclick="toggleReason(false)">
@@ -102,7 +102,7 @@
     <div class="col-lg-8" id="session-management">
         <h4>部制管理</h4>
         <div class="mb-3 d-flex gap-2">
-            <form action="{{ url_for('add_session', practice_id=practice.id) }}" method="POST">
+            <form action="{{ url_for('practices.add_session', practice_id=practice.id) }}" method="POST">
                 <button type="submit" class="btn btn-secondary">部を追加する</button>
             </form>
         </div>
@@ -114,7 +114,7 @@
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 {{ session.session_number }}部 ({{ session.members|length }}人)
-                <form action="{{ url_for('delete_session', session_id=session.id) }}" method="POST">
+                <form action="{{ url_for('practices.delete_session', session_id=session.id) }}" method="POST">
                     <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('この部を削除しますか？割り当てられたメンバーは未割り当てに戻ります。');">部を削除</button>
                 </form>
             </div>
@@ -123,7 +123,7 @@
                 <!-- ▼▼▼ ここのliタグに、ハイライト用のif文を追加しました ▼▼▼ -->
                 <li class="list-group-item d-flex justify-content-between align-items-center {% if member.id in transporter_to_ids %}bg-info-subtle{% endif %}">
                     {{ member.username }} ({{ member.generation }})
-                    <form action="{{ url_for('unassign_member', session_id=session.id, user_id=member.id) }}" method="POST">
+                    <form action="{{ url_for('practices.unassign_member', session_id=session.id, user_id=member.id) }}" method="POST">
                         <button type="submit" class="btn btn-outline-danger btn-sm">外す</button>
                     </form>
                 </li>
@@ -135,7 +135,7 @@
         <hr>
         <h5>未割り当ての出席・早退者</h5>
         {% if unassigned_attendees %}
-        <form action="{{ url_for('assign_member') }}" method="POST">
+        <form action="{{ url_for('practices.assign_member') }}" method="POST">
             <input type="hidden" name="practice_id" value="{{ practice.id }}">
             <div class="mb-3 border rounded p-2" style="max-height: 200px; overflow-y: auto;">
                 {% for user in unassigned_attendees|sort(attribute='username') %}
@@ -172,7 +172,7 @@
         <div class="card mb-4">
             <div class="card-header">運搬を割り当てる</div>
             <div class="card-body">
-                <form action="{{ url_for('assign_transport') }}" method="POST">
+                <form action="{{ url_for('practices.assign_transport') }}" method="POST">
                     <input type="hidden" name="practice_id" value="{{ practice.id }}">
                     <input type="hidden" name="direction" value="to">
                     <div class="mb-3">
@@ -208,7 +208,7 @@
                     <strong>{{ transport.user.username }}</strong> が <br>
                     <small>{{ transport.board.name }}</small> を運搬
                 </div>
-                <form action="{{ url_for('unassign_transport', transport_id=transport.id) }}" method="POST">
+                <form action="{{ url_for('practices.unassign_transport', transport_id=transport.id) }}" method="POST">
                     <button type="submit" class="btn btn-outline-danger btn-sm">解除</button>
                 </form>
             </li>
@@ -223,7 +223,7 @@
         <div class="card mb-4">
             <div class="card-header">運搬を割り当てる (確定分)</div>
             <div class="card-body">
-                <form action="{{ url_for('assign_transport') }}" method="POST">
+                <form action="{{ url_for('practices.assign_transport') }}" method="POST">
                     <input type="hidden" name="practice_id" value="{{ practice.id }}">
                     <input type="hidden" name="direction" value="from">
                     <div class="mb-3">
@@ -263,7 +263,7 @@
                 {% elif not lottery_boards %}
                     <p class="text-muted">持ち帰る必要のあるボードは、すべて手動で割り当て済みです。</p>
                 {% else %}
-                <form action="{{ url_for('run_lottery', practice_id=practice.id) }}" method="POST">
+                <form action="{{ url_for('practices.run_lottery', practice_id=practice.id) }}" method="POST">
                     <div class="mb-3">
                         <label class="form-label">抽選対象のボードを選択</label>
                         <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
@@ -294,7 +294,7 @@
                     <strong>{{ transport.user.username }}</strong> が <br>
                     <small>{{ transport.board.name }}</small> を運搬
                 </div>
-                <form action="{{ url_for('unassign_transport', transport_id=transport.id) }}" method="POST">
+                <form action="{{ url_for('practices.unassign_transport', transport_id=transport.id) }}" method="POST">
                     <button type="submit" class="btn btn-outline-danger btn-sm">解除</button>
                 </form>
             </li>

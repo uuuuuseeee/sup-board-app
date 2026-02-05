@@ -8,7 +8,7 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('login') }}">
+                    <form method="POST" action="{{ url_for('auth.login') }}">
                         <div class="mb-3">
                             <label for="username" class="form-label">ユーザー名</label>
                             <input type="text" class="form-control" id="username" name="username" required>
@@ -20,12 +20,12 @@
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">ログイン</button>
                             <!-- ↓↓ ゲストログインボタンを追加 ↓↓ -->
-                            <a href="{{ url_for('guest_login') }}" class="btn btn-secondary">ゲストとして閲覧する</a>
+                            <a href="{{ url_for('auth.guest_login') }}" class="btn btn-secondary">ゲストとして閲覧する</a>
                         </div>
                     </form>
                 </div>
                 <div class="card-footer text-center">
-                    アカウントをお持ちでないですか？ <a href="{{ url_for('register') }}">新規登録</a>
+                    アカウントをお持ちでないですか？ <a href="{{ url_for('auth.register') }}">新規登録</a>
                 </div>
             </div>
         </div>

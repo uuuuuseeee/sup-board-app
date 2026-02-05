@@ -5,7 +5,7 @@
 
 {% if current_user.role != 'guest' %}
 <div class="d-flex justify-content-end mb-3">
-    <a href="{{ url_for('add_board') }}" class="btn btn-primary">新しいボードを追加する</a>
+    <a href="{{ url_for('boards.add') }}" class="btn btn-primary">新しいボードを追加する</a>
 </div>
 {% endif %}
 
@@ -37,8 +37,8 @@
                 <th scope="col">
                     ボード名
                     <!-- ↓↓ ここのリンクを修正しました ↓↓ -->
-                    <a href="{{ url_for('board_index', sort_by='name', order='asc') }}">▲</a>
-                    <a href="{{ url_for('board_index', sort_by='name', order='desc') }}">▼</a>
+                    <a href="{{ url_for('boards.index', sort_by='name', order='asc') }}">▲</a>
+                    <a href="{{ url_for('boards.index', sort_by='name', order='desc') }}">▼</a>
                 </th>
                 <th scope="col">現在の場所</th>
                 <th scope="col" class="d-none d-md-table-cell">最終更新者</th>
@@ -64,9 +64,9 @@
                 <td data-label="最終更新日時" class="d-none d-md-table-cell">{{ board.updated_at }}</td>
                 {% if current_user.role != 'guest' %}
                 <td data-label="操作">
-                    <a href="{{ url_for('update_board', board_id=board.id) }}" class="btn btn-secondary btn-sm">更新</a>
-                    <a href="{{ url_for('history', board_id=board.id) }}" class="btn btn-info btn-sm">履歴</a>
-                    <form action="{{ url_for('delete_board', board_id=board.id) }}" method="POST" style="display:inline;">
+                    <a href="{{ url_for('boards.update', board_id=board.id) }}" class="btn btn-secondary btn-sm">更新</a>
+                    <a href="{{ url_for('boards.history', board_id=board.id) }}" class="btn btn-info btn-sm">履歴</a>
+                    <form action="{{ url_for('boards.delete', board_id=board.id) }}" method="POST" style="display:inline;">
                         <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('本当にこのボードを削除しますか？');">削除</button>
                     </form>
                 </td>
@@ -79,7 +79,7 @@
 
 {% if current_user.role != 'guest' %}
 <hr>
-<form action="{{ url_for('bulk_update') }}" method="POST" id="bulk-update-form">
+<form action="{{ url_for('boards.bulk_update') }}" method="POST" id="bulk-update-form">
     <div class="card p-3">
         <h3>選択したボードを一括更新</h3>
         <div class="row g-3 align-items-end">
@@ -124,7 +124,7 @@
             </div>
             <div class="modal-footer">
                 {% if current_user.role != 'guest' %}
-                <a href="{{ url_for('update_board', board_id=board.id) }}" class="btn btn-primary">このボードを編集</a>
+                <a href="{{ url_for('boards.update', board_id=board.id) }}" class="btn btn-primary">このボードを編集</a>
                 {% endif %}
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
             </div>

@@ -12,7 +12,7 @@
     <div class="list-group list-group-flush">
         {% for attendance in unanswered_attendances %}
         <!-- 各練習の詳細ページへリンク -->
-        <a href="{{ url_for('practice_detail', practice_id=attendance.practice_id) }}" class="list-group-item list-group-item-action">
+        <a href="{{ url_for('practices.detail', practice_id=attendance.practice_id) }}" class="list-group-item list-group-item-action">
             {{ attendance.practice.title }} ({{ attendance.practice.practice_date.strftime('%m/%d') }})
         </a>
         {% endfor %}
@@ -27,7 +27,7 @@
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title">ボード管理</h5>
                 <p class="card-text">SUPボードの現在位置や状態を管理します。</p>
-                <a href="{{ url_for('board_index') }}" class="btn btn-primary mt-auto">ボード管理へ</a>
+                <a href="{{ url_for('boards.index') }}" class="btn btn-primary mt-auto">ボード管理へ</a>
             </div>
         </div>
     </div>
@@ -36,7 +36,7 @@
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title">チーム練習管理</h5>
                 <p class="card-text">チーム練習の出欠確認や、ボードの運搬計画を管理します。</p>
-                <a href="{{ url_for('practice_index') }}" class="btn btn-primary mt-auto">練習管理へ</a>
+                <a href="{{ url_for('practices.index') }}" class="btn btn-primary mt-auto">練習管理へ</a>
             </div>
         </div>
     </div>

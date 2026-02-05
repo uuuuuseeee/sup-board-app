@@ -1,6 +1,7 @@
 """
 Flask application factory.
 """
+import os
 import logging
 import click
 from flask import Flask
@@ -24,7 +25,13 @@ def create_app(config_class=Config):
     Returns:
         Configured Flask application instance
     """
-    app = Flask(__name__)
+    # Get the parent directory of the app package for templates and static
+    template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates')
+    static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
+    
+    app = Flask(__name__, 
+                template_folder=template_dir,
+                static_folder=static_dir)
     
     # Load configuration
     app.config.from_object(config_class)

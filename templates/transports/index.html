@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}運搬一覧{% endblock %}
+{% block header %}運搬一覧{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('transports.index', status='active') }}" 
+               class="btn btn-{{ 'primary' if status_filter == 'active' else 'outline-primary' }}">
+                進行中
+            </a>
+            <a href="{{ url_for('transports.index', status='completed') }}" 
+               class="btn btn-{{ 'primary' if status_filter == 'completed' else 'outline-primary' }}">
+                完了
+            </a>
+            <a href="{{ url_for('transports.index', status='cancelled') }}" 
+               class="btn btn-{{ 'primary' if status_filter == 'cancelled' else 'outline-primary' }}">
+                キャンセル
+            </a>
+            <a href="{{ url_for('transports.index', status='all') }}" 
+               class="btn btn-{{ 'primary' if status_filter == 'all' else 'outline-primary' }}">
+                すべて
+            </a>
+        </div>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('transports.new') }}" class="btn btn-success">
+            <i class="bi bi-plus-lg"></i> 新規運搬登録
+        </a>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col">
+        <a href="{{ url_for('transports.matrix') }}" class="btn btn-outline-info">
+            <i class="bi bi-grid-3x3"></i> 配置マトリクス
+        </a>
+        <a href="{{ url_for('transports.pending') }}" class="btn btn-outline-warning">
+            <i class="bi bi-question-circle"></i> 目的地未定一覧
+        </a>
+    </div>
+</div>
+
+{% if transports %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>ボード</th>
+                <th>経路</th>
+                <th>運搬者</th>
+                <th>出発予定</th>
+                <th>到着予定</th>
+                <th>ステータス</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for transport in transports %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('transports.board_history', board_id=transport.board_id) }}">
+                        {{ transport.board.name }}
+                    </a>
+                </td>
+                <td>
+                    {{ transport.origin }}
+                    <i class="bi bi-arrow-right"></i>
+                    {% if transport.destination %}
+                        {{ transport.destination }}
+                    {% else %}
+                        <span class="text-warning">未定</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% for carrier in transport.carriers %}
+                        {% if not loop.first %}<i class="bi bi-arrow-right"></i>{% endif %}
+                        <span class="{{ 'text-muted' if carrier.is_unregistered else '' }}">
+                            {{ carrier.carrier_name }}
+                        </span>
+                    {% endfor %}
+                </td>
+                <td>
+                    {% if transport.departure_date %}
+                        {{ transport.departure_date.strftime('%m/%d') }}
+                        <small class="text-muted">{{ transport.get_timing_display(transport.departure_timing) }}</small>
+                    {% else %}
+                        <span class="text-warning">未定</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if transport.arrival_date %}
+                        {{ transport.arrival_date.strftime('%m/%d') }}
+                        <small class="text-muted">{{ transport.get_timing_display(transport.arrival_timing) }}</small>
+                    {% else %}
+                        <span class="text-warning">未定</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge bg-{{ 
+                        'secondary' if transport.status == 'scheduled' else
+                        'primary' if transport.status == 'in_progress' else
+                        'info' if transport.status == 'at_waypoint' else
+                        'warning' if transport.status in ['awaiting_handover', 'destination_pending'] else
+                        'success' if transport.status == 'completed' else
+                        'danger'
+                    }}">
+                        {{ transport.get_status_display() }}
+                    </span>
+                </td>
+                <td>
+                    <a href="{{ url_for('transports.detail', transport_id=transport.id) }}" class="btn btn-sm btn-outline-primary">
+                        詳細
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    運搬データがありません。
+</div>
+{% endif %}
+{% endblock %}

@@ -4,8 +4,10 @@
 {% block content %}
 
 {% if current_user.role != 'guest' %}
-<div class="d-flex justify-content-end mb-3">
-    <a href="{{ url_for('add_board') }}" class="btn btn-primary">新しいボードを追加する</a>
+<div class="d-flex justify-content-end mb-3 gap-2">
+    <a href="{{ url_for('transports.index') }}" class="btn btn-outline-primary">運搬管理</a>
+    <a href="{{ url_for('transports.new') }}" class="btn btn-success">運搬を登録する</a>
+    <a href="{{ url_for('boards.add') }}" class="btn btn-primary">新しいボードを追加する</a>
 </div>
 {% endif %}
 
@@ -31,14 +33,10 @@
     <table class="table table-striped table-hover responsive-table">
         <thead class="table-light">
             <tr>
-                {% if current_user.role != 'guest' %}
-                <th scope="col"><input type="checkbox" onclick="toggle(this);"></th>
-                {% endif %}
                 <th scope="col">
                     ボード名
-                    <!-- ↓↓ ここのリンクを修正しました ↓↓ -->
-                    <a href="{{ url_for('board_index', sort_by='name', order='asc') }}">▲</a>
-                    <a href="{{ url_for('board_index', sort_by='name', order='desc') }}">▼</a>
+                    <a href="{{ url_for('boards.index', sort_by='name', order='asc') }}">▲</a>
+                    <a href="{{ url_for('boards.index', sort_by='name', order='desc') }}">▼</a>
                 </th>
                 <th scope="col">現在の場所</th>
                 <th scope="col" class="d-none d-md-table-cell">最終更新者</th>
@@ -51,9 +49,6 @@
         <tbody>
             {% for board in boards %}
             <tr>
-                {% if current_user.role != 'guest' %}
-                <td data-label="選択"><input type="checkbox" name="board_ids" value="{{ board.id }}" form="bulk-update-form"></td>
-                {% endif %}
                 <td data-label="ボード名">
                     <button type="button" class="btn btn-link p-0 text-start" data-bs-toggle="modal" data-bs-target="#boardDetailModal{{ board.id }}">
                         {{ board.name }}
@@ -64,9 +59,9 @@
                 <td data-label="最終更新日時" class="d-none d-md-table-cell">{{ board.updated_at }}</td>
                 {% if current_user.role != 'guest' %}
                 <td data-label="操作">
-                    <a href="{{ url_for('update_board', board_id=board.id) }}" class="btn btn-secondary btn-sm">更新</a>
-                    <a href="{{ url_for('history', board_id=board.id) }}" class="btn btn-info btn-sm">履歴</a>
-                    <form action="{{ url_for('delete_board', board_id=board.id) }}" method="POST" style="display:inline;">
+                    <a href="{{ url_for('boards.update', board_id=board.id) }}" class="btn btn-secondary btn-sm">更新</a>
+                    <a href="{{ url_for('transports.board_history', board_id=board.id) }}" class="btn btn-info btn-sm">運搬履歴</a>
+                    <form action="{{ url_for('boards.delete', board_id=board.id) }}" method="POST" style="display:inline;">
                         <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('本当にこのボードを削除しますか？');">削除</button>
                     </form>
                 </td>
@@ -79,30 +74,10 @@
 
 {% if current_user.role != 'guest' %}
 <hr>
-<form action="{{ url_for('bulk_update') }}" method="POST" id="bulk-update-form">
-    <div class="card p-3">
-        <h3>選択したボードを一括更新</h3>
-        <div class="row g-3 align-items-end">
-            <div class="col-md-5">
-                <label for="location_select" class="form-label">移動先の場所</label>
-                <select name="location_select" id="location_select" class="form-select" onchange="toggleBulkLocationInput()">
-                    <option value="横浜">横浜</option>
-                    <option value="海の公園">海の公園</option>
-                    <option value="平塚">平塚</option>
-                    <option value="日本橋">日本橋</option>
-                    <option value="その他">その他</option>
-                </select>
-            </div>
-            <div class="col-md-5" id="bulk_location_other_p" style="display: none;">
-                <label for="location_other" class="form-label">具体的な場所</label>
-                <input type="text" name="location_other" class="form-control">
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-success w-100">一括更新</button>
-            </div>
-        </div>
-    </div>
-</form>
+<div class="card p-3">
+    <h5>ボードの移動について</h5>
+    <p class="mb-0">ボードの場所を変更するには、<a href="{{ url_for('transports.new') }}">運搬登録</a>から運搬を登録してください。</p>
+</div>
 {% endif %}
 
 {% for board in boards %}
@@ -124,7 +99,8 @@
             </div>
             <div class="modal-footer">
                 {% if current_user.role != 'guest' %}
-                <a href="{{ url_for('update_board', board_id=board.id) }}" class="btn btn-primary">このボードを編集</a>
+                <a href="{{ url_for('transports.board_history', board_id=board.id) }}" class="btn btn-info">運搬履歴</a>
+                <a href="{{ url_for('boards.update', board_id=board.id) }}" class="btn btn-primary">このボードを編集</a>
                 {% endif %}
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
             </div>

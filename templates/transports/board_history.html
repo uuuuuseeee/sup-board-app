@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ board.name }}の運搬履歴{% endblock %}
+{% block header %}{{ board.name }}の運搬履歴{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>ボード名:</strong> {{ board.name }}</p>
+                <p><strong>シリアル番号:</strong> {{ board.serial_number or '未設定' }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>現在地:</strong> <span class="text-primary fw-bold">{{ board.location }}</span></p>
+                <p><strong>備考:</strong> {{ board.notes or 'なし' }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mb-3">
+    <a href="{{ url_for('transports.new', board_id=board.id) }}" class="btn btn-success">
+        <i class="bi bi-plus-lg"></i> 新規運搬を登録
+    </a>
+</div>
+
+{% if transports %}
+<div class="timeline">
+    {% for transport in transports %}
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>
+                {{ transport.origin }}
+                <i class="bi bi-arrow-right"></i>
+                {% if transport.destination %}
+                {{ transport.destination }}
+                {% else %}
+                <span class="text-warning">未定</span>
+                {% endif %}
+            </span>
+            <span class="badge bg-{{ 
+                'secondary' if transport.status == 'scheduled' else
+                'primary' if transport.status == 'in_progress' else
+                'info' if transport.status == 'at_waypoint' else
+                'warning' if transport.status in ['awaiting_handover', 'destination_pending'] else
+                'success' if transport.status == 'completed' else
+                'danger'
+            }}">
+                {{ transport.get_status_display() }}
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><small class="text-muted">運搬者:</small><br>
+                        {% for carrier in transport.carriers %}
+                        {{ carrier.carrier_name }}{% if not loop.last %} → {% endif %}
+                        {% endfor %}
+                    </p>
+                    <p><small class="text-muted">理由:</small><br>{{ transport.get_reason_display() }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><small class="text-muted">出発:</small><br>
+                        {% if transport.actual_departure %}
+                        {{ transport.actual_departure.strftime('%Y-%m-%d %H:%M') }}
+                        {% elif transport.departure_date %}
+                        {{ transport.departure_date.strftime('%Y-%m-%d') }} {{ transport.get_timing_display(transport.departure_timing) }}（予定）
+                        {% else %}
+                        未定
+                        {% endif %}
+                    </p>
+                    <p><small class="text-muted">到着:</small><br>
+                        {% if transport.actual_arrival %}
+                        {{ transport.actual_arrival.strftime('%Y-%m-%d %H:%M') }}
+                        {% elif transport.arrival_date %}
+                        {{ transport.arrival_date.strftime('%Y-%m-%d') }} {{ transport.get_timing_display(transport.arrival_timing) }}（予定）
+                        {% else %}
+                        未定
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            
+            {% if transport.waypoints %}
+            <p><small class="text-muted">中継地点:</small><br>
+                {% for waypoint in transport.waypoints %}
+                {{ waypoint.location }}{% if waypoint.arrived_at %} ({{ waypoint.arrived_at.strftime('%m/%d') }}){% endif %}{% if not loop.last %} → {% endif %}
+                {% endfor %}
+            </p>
+            {% endif %}
+
+            {% if transport.cancelled_reason %}
+            <p class="text-danger"><small>キャンセル理由:</small> {{ transport.cancelled_reason }}</p>
+            {% endif %}
+        </div>
+        <div class="card-footer">
+            <a href="{{ url_for('transports.detail', transport_id=transport.id) }}" class="btn btn-sm btn-outline-primary">
+                詳細を見る
+            </a>
+            <small class="text-muted float-end">
+                登録: {{ transport.created_by.username }} ({{ transport.created_at.strftime('%Y-%m-%d') }})
+            </small>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    このボードの運搬履歴はありません。
+</div>
+{% endif %}
+
+<a href="{{ url_for('boards.index') }}" class="btn btn-secondary mt-3">
+    <i class="bi bi-arrow-left"></i> ボード一覧に戻る
+</a>
+{% endblock %}

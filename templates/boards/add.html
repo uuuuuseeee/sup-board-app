@@ -8,7 +8,7 @@
         <div class="col-md-8">
             <div class="card">
                 <div class="card-body">
-                    <form action="{{ url_for('add_board') }}" method="POST">
+                    <form action="{{ url_for('boards.add') }}" method="POST">
                         <div class="mb-3">
                             <label for="name" class="form-label">ボード名</label>
                             <input type="text" class="form-control" id="name" name="name" required>
@@ -38,7 +38,7 @@
                         </div>
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">追加する</button>
-                            <a href="{{ url_for('index') }}" class="btn btn-secondary">一覧に戻る</a>
+                            <a href="{{ url_for('main.index') }}" class="btn btn-secondary">一覧に戻る</a>
                         </div>
                     </form>
                 </div>

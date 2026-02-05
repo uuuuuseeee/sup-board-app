@@ -7,7 +7,7 @@
         <div class="card">
             <div class="card-header">新しいチームを追加</div>
             <div class="card-body">
-                <form action="{{ url_for('admin_teams') }}" method="POST">
+                <form action="{{ url_for('admin.teams') }}" method="POST">
                     <div class="mb-3">
                         <label for="team_name" class="form-label">チーム名</label>
                         <input type="text" class="form-control" id="team_name" name="team_name" required>
@@ -23,7 +23,7 @@
             {% for team in teams %}
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 {{ team.name }}
-                <form action="{{ url_for('delete_team', team_id=team.id) }}" method="POST">
+                <form action="{{ url_for('admin.delete_team', team_id=team.id) }}" method="POST">
                     <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('このチームを削除しますか？');">削除</button>
                 </form>
             </li>

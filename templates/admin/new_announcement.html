@@ -8,7 +8,7 @@
         <div class="col-md-8">
             <div class="card">
                 <div class="card-body">
-                    <form action="{{ url_for('new_announcement') }}" method="POST">
+                    <form action="{{ url_for('admin.new_announcement') }}" method="POST">
                         <div class="mb-3">
                             <label for="title" class="form-label">タイトル</label>
                             <input type="text" class="form-control" id="title" name="title" required>
@@ -19,7 +19,7 @@
                         </div>
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">投稿する</button>
-                            <a href="{{ url_for('admin_announcements') }}" class="btn btn-secondary">キャンセル</a>
+                            <a href="{{ url_for('admin.announcements') }}" class="btn btn-secondary">キャンセル</a>
                         </div>
                     </form>
                 </div>
